@@ -219,3 +219,7 @@ __marimo__/
 
 # Machine related stuff
 .DS_Store
+# Datasets (6+ GB; re-downloadable via scripts/download_molinaro.sh)
+data/molinaro-raw/
+data/cache/
+*.zip
