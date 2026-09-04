@@ -223,3 +223,6 @@ __marimo__/
 data/molinaro-raw/
 data/cache/
 *.zip
+
+# Windowed arrays produced by 02_build_windows.ipynb
+data/processed/
