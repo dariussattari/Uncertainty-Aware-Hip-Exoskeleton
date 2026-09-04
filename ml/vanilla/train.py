@@ -14,7 +14,7 @@ Stage 1 matters. The paper reports 13 epochs for its gait-phase model, but that 
 found on ankle data with 9 subjects — it is an output of the procedure, not a constant to
 copy. :func:`run_loso` determines the equivalent for this dataset.
 
-    from dataset import EnsembleGaitPhase
+    from dataset import EnsembleGaitPhase, repo_root
     from train import train_paper_protocol
 
     data = EnsembleGaitPhase()
@@ -36,11 +36,12 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from dataset import EnsembleGaitPhase
+from dataset import EnsembleGaitPhase, repo_root
 from model import THRESHOLD_PERCENTILE, create_ensemble
 
 __all__ = [
     "pick_device",
+    "resolve_out",
     "masked_ensemble_mse",
     "train_gait_ensemble",
     "evaluate",
@@ -49,6 +50,16 @@ __all__ = [
     "train_paper_protocol",
     "TrainConfig",
 ]
+
+
+def resolve_out(path: str | Path) -> Path:
+    """Anchor a run directory to the repo root.
+
+    Relative paths would otherwise land wherever the process happened to start, so running
+    from ml/vanilla/ would create ml/vanilla/ml/vanilla/runs/.
+    """
+    p = Path(path)
+    return p if p.is_absolute() else repo_root() / p
 
 
 def pick_device(prefer: str | None = None) -> torch.device:
@@ -260,7 +271,7 @@ def train_paper_protocol(data: EnsembleGaitPhase, cfg: TrainConfig | None = None
     """
     cfg = cfg or TrainConfig()
     device = pick_device(cfg.device)
-    out = Path(cfg.out_dir)
+    out = resolve_out(cfg.out_dir)
     out.mkdir(parents=True, exist_ok=True)
 
     stage1 = run_loso(data, cfg)

@@ -33,12 +33,13 @@ import pandas as pd
 import torch
 from torch.utils.data import BatchSampler, DataLoader, Dataset, RandomSampler, SequentialSampler
 
-__all__ = ["EnsembleGaitPhase", "Split"]
+__all__ = ["EnsembleGaitPhase", "Split", "OodSplit", "repo_root"]
 
 SPLITS = ("train", "val", "test")
 
 
-def _repo_root(marker: str = "data/processed") -> Path:
+def repo_root(marker: str = "data/processed") -> Path:
+    """Locate the repo root, so paths never depend on the caller's cwd."""
     for d in Path(__file__).resolve().parents:
         if (d / marker).is_dir():
             return d
@@ -123,6 +124,44 @@ class Split(Dataset):
         return np.flatnonzero(keep)
 
 
+class OodSplit(Dataset):
+    """Held-out-mode windows for out-of-distribution evaluation — inputs only.
+
+    Lives in ``data/processed/ood/`` and is shared by every architecture: OOD scoring needs
+    only ``Psi(x)``, never a label. Scaled with the *ensemble's* scaler, since that is what
+    the model was trained under.
+    """
+
+    def __init__(self, root: Path, split: str, mean: np.ndarray, std: np.ndarray, scale: bool):
+        self.root, self.split, self.scale = root, split, scale
+        self._mean, self._std = mean, std
+        self.X = np.load(root / f"{split}_X.npy", mmap_mode="r")
+        self.meta = pd.read_parquet(root / f"{split}_meta.parquet")
+        if len(self.X) != len(self.meta):
+            raise ValueError(f"length mismatch in ood/{split}")
+
+    def __len__(self) -> int:
+        return len(self.X)
+
+    def __repr__(self) -> str:
+        return (f"OodSplit({self.split!r}, n={len(self):,}, "
+                f"modes={sorted(self.meta['mode'].unique())})")
+
+    def take(self, idx: Sequence[int] | np.ndarray) -> np.ndarray:
+        idx = np.atleast_1d(np.asarray(idx, dtype=np.int64))
+        order = np.argsort(idx, kind="stable")
+        inverse = np.empty_like(order)
+        inverse[order] = np.arange(len(order))
+        x = np.asarray(self.X[idx[order]], dtype=np.float32)[inverse]
+        return (x - self._mean) / self._std if self.scale else x
+
+    def __getitem__(self, i: int):
+        return torch.from_numpy(self.take([i])[0])
+
+    def __getitems__(self, items: Sequence[int]):
+        return list(torch.from_numpy(self.take(items)))
+
+
 class EnsembleGaitPhase:
     """Everything the vanilla gait-phase ensemble needs from the data.
 
@@ -137,7 +176,7 @@ class EnsembleGaitPhase:
     """
 
     def __init__(self, root: Path | str | None = None, batch_size: int = 1024, scale: bool = True):
-        self.root = Path(root) if root is not None else _repo_root() / "data" / "processed"
+        self.root = Path(root) if root is not None else repo_root() / "data" / "processed"
         self.batch_size = batch_size
 
         missing = [n for n in ("scaler.npz", *(f"{s}_X.npy" for s in SPLITS))
@@ -159,9 +198,19 @@ class EnsembleGaitPhase:
         self.splits = {s: Split(self.root, s, mean, std, scale) for s in SPLITS}
         self.train, self.val, self.test = (self.splits[s] for s in SPLITS)
 
+        # Pseudo-OOD (held-out ambulation modes). Absent until 02_build_windows.ipynb
+        # has been re-run with the ood/ section, so this stays optional.
+        ood_root = self.root / "ood"
+        self.ood = {
+            s: OodSplit(ood_root, s, mean, std, scale)
+            for s in ("val", "test")
+            if (ood_root / f"{s}_X.npy").exists()
+        }
+
     def __repr__(self) -> str:
         sizes = ", ".join(f"{s}={len(v):,}" for s, v in self.splits.items())
-        return f"EnsembleGaitPhase({sizes}, shape={self.shape})"
+        ood = ", ".join(f"ood_{s}={len(v):,}" for s, v in self.ood.items())
+        return f"EnsembleGaitPhase({sizes}{', ' + ood if ood else ''}, shape={self.shape})"
 
     def __getitem__(self, split: str) -> Split:
         return self.splits[split]
@@ -226,6 +275,33 @@ class EnsembleGaitPhase:
             sampler=BatchSampler(sampler, batch_size=bs, drop_last=drop_last),
             batch_size=None,           # the sampler already yields batches
             collate_fn=lambda b: b,    # _Batched returns a finished batch
+            num_workers=0,
+        )
+
+    def ood_loader(self, split: str, batch_size: int | None = None) -> DataLoader:
+        """A ``DataLoader`` over OOD windows, yielding ``x`` only (no labels exist)."""
+        if split not in self.ood:
+            raise KeyError(
+                f"no OOD data for {split!r} in {self.root / 'ood'}. "
+                "Re-run data_exploration/02_build_windows.ipynb."
+            )
+        sp = self.ood[split]
+        idx = np.arange(len(sp), dtype=np.int64)
+        bs = batch_size or self.batch_size
+
+        class _Batched(Dataset):
+            def __len__(self) -> int:
+                return len(idx)
+
+            def __getitem__(self, batch: Sequence[int]):
+                return torch.from_numpy(sp.take(idx[np.asarray(batch, dtype=np.int64)]))
+
+        base = _Batched()
+        return DataLoader(
+            base,
+            sampler=BatchSampler(SequentialSampler(base), batch_size=bs, drop_last=False),
+            batch_size=None,
+            collate_fn=lambda b: b,
             num_workers=0,
         )
 
