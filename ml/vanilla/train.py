@@ -215,11 +215,24 @@ def run_loso(data: EnsembleGaitPhase, cfg: TrainConfig | None = None) -> dict:
     if cfg.loso_folds:
         folds = folds[: cfg.loso_folds]
 
+    # Resume: Stage 1 is the long half, so completed folds are persisted after each one.
+    # An interrupted run (sleep, crash, Ctrl-C) picks up where it left off instead of
+    # repeating hours of work.
+    out = resolve_out(cfg.out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    ledger = out / "loso_folds.json"
+    results = json.loads(ledger.read_text()) if ledger.exists() else []
+    done = {r["subject"] for r in results}
+    if done:
+        print(f"resuming: {len(done)} fold(s) already complete {sorted(done)}")
+
     print(f"Stage 1: LOSO over {len(folds)} subjects on {device} "
           f"(max {cfg.max_epochs} epochs, patience {cfg.patience})")
 
-    results = []
     for i, (subject, train_idx, held_idx) in enumerate(folds, 1):
+        if subject in done:
+            print(f"\n[{i}/{len(folds)}] {subject} already done, skipping")
+            continue
         torch.manual_seed(cfg.seed + i)
         model = create_ensemble(data.n_channels, data.n_targets, cfg.n_members)
         print(f"\n[{i}/{len(folds)}] hold out {subject}  "
@@ -235,7 +248,8 @@ def run_loso(data: EnsembleGaitPhase, cfg: TrainConfig | None = None) -> dict:
         best = min(hist, key=lambda r: r["val_loss"])
         results.append({"subject": subject, "best_epoch": best["epoch"],
                         "val_loss": best["val_loss"], "epochs_run": len(hist)})
-        print(f"  -> best epoch {best['epoch']}  val {best['val_loss']:.5f}")
+        ledger.write_text(json.dumps(results, indent=2))   # persist before the next fold
+        print(f"  -> best epoch {best['epoch']}  val {best['val_loss']:.5f}  [saved {len(results)}/{len(folds)}]")
 
     epochs = [r["best_epoch"] for r in results]
     n_epochs = max(1, int(round(float(np.mean(epochs)))))
