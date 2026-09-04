@@ -226,3 +226,6 @@ data/cache/
 
 # Windowed arrays produced by 02_build_windows.ipynb
 data/processed/
+
+# Local arm64 virtualenv (torch + MPS)
+.venv/
