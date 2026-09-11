@@ -13,9 +13,20 @@ architecture is expensive. ``registry.py`` maps the name to its model, trainer, 
 plots, so this file contains no model-specific logic beyond the two evaluator signatures.
 
 Checkpoint layout is common to every model: ``<run>/final.pt`` holds the weights and the
-calibrated threshold, ``<run>/report.json`` the training record, ``<run>/eval_<split>.json`` the
-metrics, ``<run>/figures/`` the plots. Model-specific extras sit alongside — the autoencoder
-also writes ``lof.pkl`` and ``latents_<split>.npz``.
+calibrated threshold, ``<run>/report.json`` the training record, ``<run>/figures/`` the plots.
+Model-specific extras sit alongside — the autoencoder also writes ``lof.pkl`` and
+``latents_<split>.npz``.
+
+``<run>/eval_<split>.json`` uses one schema for every model, so a cross-model comparison never
+has to branch on which produced the file::
+
+    {"model": str, "split": str, "threshold": float, "steepness": float,
+     "metrics": {accuracy, precision, recall, specificity, f1, j_statistic, auroc, ece,
+                 brier, n_id, n_ood, pct_ood, counts},
+     "per_mode": [{mode, kind, windows, ...}],
+     "extra": {...}}          # model-specific; the AE puts its rejected score here
+
+Only ``extra`` is allowed to differ between models.
 
 Runtimes differ by orders of magnitude: the autoencoder is minutes, the ensemble's full
 two-stage protocol is hours. ``--folds`` trims the ensemble's LOSO for a cheaper first pass.
@@ -93,8 +104,10 @@ def cmd_eval(args) -> int:
     print(data, "\n")
     device = pick_device(args.device)
 
-    # The two evaluators differ in signature by necessity: the ensemble scores from a model
+    # The two evaluators differ in signature by necessity -- the ensemble scores from a model
     # object plus a threshold, the autoencoder from a run directory (it also needs its LOF).
+    # Both are normalised into one result schema below, so downstream consumers and the
+    # cross-model comparison do not have to branch on which model produced a file.
     if spec.name == "ensemble":
         from evaluation.ensemble import load_checkpoint
         from training.ensemble import fit_threshold
@@ -105,16 +118,30 @@ def cmd_eval(args) -> int:
         res = parts["evaluate"](model, data, threshold, split=args.split, device=device,
                                 batch_size=args.batch_size, filter_kind=args.filter,
                                 filter_scores=args.filter_scores)
-        payload = {"metrics": res.metrics, "per_mode": res.per_mode.to_dict("records"),
-                   "threshold": res.threshold, "steepness": res.steepness}
+        metrics = {k: v for k, v in res.metrics.items() if k != "steepness"}
+        per_mode = res.per_mode.to_dict("records")
+        threshold, steepness, extra = res.threshold, res.steepness, {}
         np.savez_compressed(run / f"scores_{args.split}.npz",
                             scores=res.scores, labels=res.labels)
     else:
-        bundle, metrics = parts["evaluate"](run, data, args.split, device, args.batch_size)
+        from evaluation.autoencoder import per_mode_table
+        bundle, m = parts["evaluate"](run, data, args.split, device, args.batch_size)
         bundle.save(run / f"latents_{args.split}")
-        payload = {k: v for k, v in metrics.items() if k != "recon"}
-        payload["recon_score"] = metrics.get("recon")
+        metrics = {k: v for k, v in m.items() if k not in ("recon", "steepness", "latent_dim")}
+        per_mode = per_mode_table(bundle).to_dict("records")
+        threshold, steepness = bundle.threshold, m.get("steepness")
+        extra = {"alternative_scores": {"reconstruction_error": m.get("recon")},
+                 "latent_dim": m.get("latent_dim")}
 
+    payload = {
+        "model": spec.name,
+        "split": args.split,
+        "threshold": threshold,
+        "steepness": steepness,
+        "metrics": metrics,
+        "per_mode": per_mode,
+        "extra": extra,
+    }
     run.mkdir(parents=True, exist_ok=True)
     (run / f"eval_{args.split}.json").write_text(json.dumps(payload, indent=2, default=float))
     print(f"\nsaved {run / f'eval_{args.split}.json'}")

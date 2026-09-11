@@ -204,9 +204,9 @@ def fig_latent_3d(b: LatentBundle, P: np.ndarray, evr, out: Path, n_plot: int = 
         sel = sub[(b.meta["mode"].to_numpy()[sub] == mo)]
         if not len(sel):
             continue
-        ax.scatter(P[sel, 0], P[sel, 1], P[sel, 2], s=2, alpha=0.15, c=MODE_COLS[mo],
-                   edgecolors="none", rasterized=True, label=f"{mo}")
-    lg = ax.legend(fontsize=8, markerscale=8, loc="upper left")
+        ax.scatter(P[sel, 0], P[sel, 1], P[sel, 2], s=8, alpha=0.55, c=MODE_COLS[mo],
+                   edgecolors="none", depthshade=False, rasterized=True, label=f"{mo}")
+    lg = ax.legend(fontsize=8, markerscale=4, loc="upper left")
     for h in lg.legend_handles:
         h.set_alpha(1)
     ax.set_xlabel(f"PC1 ({evr[0]:.1%})"); ax.set_ylabel(f"PC2 ({evr[1]:.1%})")
