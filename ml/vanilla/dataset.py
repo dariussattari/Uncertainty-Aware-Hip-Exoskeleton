@@ -33,7 +33,8 @@ import pandas as pd
 import torch
 from torch.utils.data import BatchSampler, DataLoader, Dataset, RandomSampler, SequentialSampler
 
-__all__ = ["EnsembleGaitPhase", "Split", "OodSplit", "repo_root"]
+__all__ = ["EnsembleGaitPhase", "AutoencoderData", "Split", "OodSplit",
+           "PlainSplit", "repo_root"]
 
 SPLITS = ("train", "val", "test")
 
@@ -328,7 +329,173 @@ class EnsembleGaitPhase:
         return ((pred - target) ** 2 * mask).sum() / mask.sum().clamp(min=1.0)
 
 
+class PlainSplit(Dataset):
+    """Windows with no targets — for the unsupervised models and for OOD scoring.
+
+    The autoencoder, GAN and synthetic-target ensemble reconstruct or discriminate the input
+    itself, so there is nothing to mask and no label to withhold. Used for both
+    ``data/processed/AE_GAN/`` (in-distribution) and ``data/processed/ood/``.
+    """
+
+    def __init__(self, root: Path, split: str, mean: np.ndarray, std: np.ndarray, scale: bool):
+        self.root, self.split, self.scale = root, split, scale
+        self._mean, self._std = mean, std
+        self.X = np.load(root / f"{split}_X.npy", mmap_mode="r")
+        self.meta = pd.read_parquet(root / f"{split}_meta.parquet")
+        if len(self.X) != len(self.meta):
+            raise ValueError(f"length mismatch in {root.name}/{split}")
+
+    def __len__(self) -> int:
+        return len(self.X)
+
+    def __repr__(self) -> str:
+        return (f"PlainSplit({self.root.name}/{self.split!r}, n={len(self):,}, "
+                f"modes={sorted(self.meta['mode'].unique())})")
+
+    @property
+    def subjects(self) -> list[str]:
+        return sorted(self.meta["subject"].unique().tolist())
+
+    def take(self, idx: Sequence[int] | np.ndarray) -> np.ndarray:
+        """Gather windows, preserving the requested order (see Split.take)."""
+        idx = np.atleast_1d(np.asarray(idx, dtype=np.int64))
+        order = np.argsort(idx, kind="stable")
+        inverse = np.empty_like(order); inverse[order] = np.arange(len(order))
+        x = np.asarray(self.X[idx[order]], dtype=np.float32)[inverse]
+        return (x - self._mean) / self._std if self.scale else x
+
+    def tensors(self, idx) -> torch.Tensor:
+        return torch.from_numpy(self.take(idx))
+
+    def __getitem__(self, i: int):
+        return self.tensors([i])[0]
+
+    def __getitems__(self, items: Sequence[int]):
+        return list(self.tensors(items))
+
+    def indices(self, subjects=None, modes=None, exclude=None) -> np.ndarray:
+        keep = np.ones(len(self), dtype=bool)
+        if subjects is not None:
+            keep &= self.meta["subject"].isin(list(subjects)).to_numpy()
+        if exclude is not None:
+            keep &= ~self.meta["subject"].isin(list(exclude)).to_numpy()
+        if modes is not None:
+            keep &= self.meta["mode"].isin(list(modes)).to_numpy()
+        return np.flatnonzero(keep)
+
+
+class AutoencoderData:
+    """Everything the convolutional autoencoder needs from the data.
+
+    Reads ``data/processed/AE_GAN/`` (in-distribution, no labels) and ``data/processed/ood/``
+    (held-out ambulation modes). Sibling of :class:`EnsembleGaitPhase`, same shape of
+    interface, but every loader yields ``x`` alone.
+
+    The AE_GAN set is larger than the ensemble's because it keeps windows that lack a
+    gait-phase label — a filter that is meaningless for a model reconstructing its own input.
+    """
+
+    def __init__(self, root: Path | str | None = None, batch_size: int = 1024, scale: bool = True):
+        base = Path(root) if root is not None else repo_root() / "data" / "processed"
+        self.root = base / "AE_GAN"
+        self.ood_root = base / "ood"
+        self.batch_size = batch_size
+
+        missing = [n for n in ("scaler.npz", *(f"{s}_X.npy" for s in SPLITS))
+                   if not (self.root / n).exists()]
+        if missing:
+            raise FileNotFoundError(
+                f"missing {missing} in {self.root}. "
+                "Run data_exploration/02_build_windows.ipynb to build them.")
+
+        sc = np.load(self.root / "scaler.npz")
+        mean = sc["mean"].astype(np.float32)[None, :, None]
+        std = sc["std"].astype(np.float32)[None, :, None]
+        self.channels = [str(c) for c in sc["channels"]]
+        self.mean, self.std = mean, std
+
+        cfg = self.root / "config.json"
+        self.config = json.loads(cfg.read_text()) if cfg.exists() else {}
+
+        self.splits = {s: PlainSplit(self.root, s, mean, std, scale) for s in SPLITS}
+        self.train, self.val, self.test = (self.splits[s] for s in SPLITS)
+        self.ood = {s: PlainSplit(self.ood_root, s, mean, std, scale)
+                    for s in ("val", "test") if (self.ood_root / f"{s}_X.npy").exists()}
+
+    def __repr__(self) -> str:
+        sizes = ", ".join(f"{s}={len(v):,}" for s, v in self.splits.items())
+        ood = ", ".join(f"ood_{s}={len(v):,}" for s, v in self.ood.items())
+        return f"AutoencoderData({sizes}{', ' + ood if ood else ''}, shape={self.shape})"
+
+    def __getitem__(self, split: str) -> PlainSplit:
+        return self.splits[split]
+
+    @property
+    def shape(self) -> tuple[int, int]:
+        return tuple(self.train.X.shape[1:])
+
+    @property
+    def n_channels(self) -> int:
+        return self.shape[0]
+
+    @property
+    def window(self) -> int:
+        return self.shape[1]
+
+    def loader(self, split, indices=None, batch_size=None, shuffle=False,
+               drop_last=False, seed=None) -> DataLoader:
+        """A ``DataLoader`` yielding ``x`` batches. Accepts a split name, or a PlainSplit."""
+        sp = self.splits[split] if isinstance(split, str) else split
+        idx = (np.arange(len(sp), dtype=np.int64) if indices is None
+               else np.asarray(indices, dtype=np.int64))
+        bs = batch_size or self.batch_size
+
+        class _Batched(Dataset):
+            def __len__(self) -> int:
+                return len(idx)
+
+            def __getitem__(self, batch: Sequence[int]):
+                return sp.tensors(idx[np.asarray(batch, dtype=np.int64)])
+
+        base = _Batched()
+        gen = torch.Generator().manual_seed(seed) if seed is not None else None
+        sampler = RandomSampler(base, generator=gen) if shuffle else SequentialSampler(base)
+        return DataLoader(base, sampler=BatchSampler(sampler, batch_size=bs, drop_last=drop_last),
+                          batch_size=None, collate_fn=lambda b: b, num_workers=0)
+
+    def ood_loader(self, split: str, batch_size=None) -> DataLoader:
+        if split not in self.ood:
+            raise KeyError(f"no OOD data for {split!r} in {self.ood_root}")
+        return self.loader(self.ood[split], batch_size=batch_size)
+
+    def train_val_indices(self, frac: float = 0.2, seed: int = 0):
+        """The paper's 80/20 split for early stopping, made **participant-disjoint**.
+
+        Table IV says only "80/20 train/valid split". Splitting by window would put windows
+        from the same trial — overlapping by 95% at stride 10 — on both sides, making the
+        validation loss meaningless for early stopping. Splitting by participant is the only
+        reading consistent with the rest of the paper's protocol.
+        """
+        subs = self.train.subjects
+        rng = np.random.default_rng(seed)
+        shuffled = list(rng.permutation(subs))
+        n_val = max(1, round(frac * len(subs)))
+        val_subs = sorted(shuffled[:n_val])
+        return (self.train.indices(exclude=val_subs), self.train.indices(subjects=val_subs),
+                val_subs)
+
+
 if __name__ == "__main__":  # python ml/vanilla/dataset.py
+    ae = AutoencoderData()
+    print(ae)
+    for name, sp in ae.splits.items():
+        print(f"  {sp}")
+    for name, sp in ae.ood.items():
+        print(f"  {sp}")
+    tr, va, vs = ae.train_val_indices()
+    print(f"  80/20 by participant: {len(tr):,} train / {len(va):,} val  (val subjects {vs})")
+    print()
+
     data = EnsembleGaitPhase()
     print(data, "\n")
     for name, sp in data.splits.items():

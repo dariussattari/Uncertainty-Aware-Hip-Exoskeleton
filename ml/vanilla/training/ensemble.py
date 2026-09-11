@@ -14,7 +14,7 @@ Stage 1 matters. The paper reports 13 epochs for its gait-phase model, but that 
 found on ankle data with 9 subjects — it is an output of the procedure, not a constant to
 copy. :func:`run_loso` determines the equivalent for this dataset.
 
-    from dataset import EnsembleGaitPhase, repo_root
+    from dataset import EnsembleGaitPhase
     from train import train_paper_protocol
 
     data = EnsembleGaitPhase()
@@ -36,12 +36,11 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from dataset import EnsembleGaitPhase, repo_root
-from model import THRESHOLD_PERCENTILE, create_ensemble
+from dataset import EnsembleGaitPhase
+from models.ensemble import THRESHOLD_PERCENTILE, create_ensemble
+from training.common import pick_device, resolve_out
 
 __all__ = [
-    "pick_device",
-    "resolve_out",
     "masked_ensemble_mse",
     "train_gait_ensemble",
     "evaluate",
@@ -50,32 +49,6 @@ __all__ = [
     "train_paper_protocol",
     "TrainConfig",
 ]
-
-
-def resolve_out(path: str | Path) -> Path:
-    """Anchor a run directory to the repo root.
-
-    Relative paths would otherwise land wherever the process happened to start, so running
-    from ml/vanilla/ would create ml/vanilla/ml/vanilla/runs/.
-    """
-    p = Path(path)
-    return p if p.is_absolute() else repo_root() / p
-
-
-def pick_device(prefer: str | None = None) -> torch.device:
-    """CUDA, else Apple MPS, else CPU.
-
-    The MPS branch is not optional on this machine: it is roughly 7x faster than the CPU
-    path for this model, and a plain ``cuda if available else cpu`` check silently lands on
-    CPU on Apple silicon.
-    """
-    if prefer:
-        return torch.device(prefer)
-    if torch.cuda.is_available():
-        return torch.device("cuda")
-    if torch.backends.mps.is_available():
-        return torch.device("mps")
-    return torch.device("cpu")
 
 
 def masked_ensemble_mse(preds: torch.Tensor, y: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:

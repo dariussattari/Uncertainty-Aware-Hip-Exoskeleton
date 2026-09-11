@@ -24,8 +24,8 @@ import pandas as pd
 from sklearn.metrics import roc_curve
 
 from dataset import EnsembleGaitPhase
-from eval import evaluate_model, load_checkpoint
-from train import pick_device, resolve_out
+from evaluation.ensemble import evaluate_model, load_checkpoint
+from training.common import pick_device, resolve_out
 
 C_ID, C_OOD = "#4C72B0", "#DD8452"
 MODE_NAMES = {
@@ -236,33 +236,45 @@ def summary(res, modes, run: Path, folds: pd.DataFrame, split: str) -> str:
     return "\n".join(lines)
 
 
-def main() -> int:
-    p = argparse.ArgumentParser(description="Summary stats and figures.")
-    p.add_argument("--out", default="ml/vanilla/runs/paper")
-    p.add_argument("--split", default="test", choices=("val", "test"))
-    args = p.parse_args()
+def run(out: str = "ml/vanilla/runs/paper", split: str = "test",
+        batch_size: int = 1024, device=None, reuse: bool = False) -> int:
+    """Generate every figure. Callable directly, so main.py needs no argv juggling.
 
-    run = resolve_out(args.out)
-    if not (run / "final.pt").exists():
-        raise SystemExit(f"no trained model at {run / 'final.pt'}")
+    ``batch_size``/``device``/``reuse`` are accepted for interface parity with the other
+    models even though this one does not currently use them.
+    """
+    run_dir = resolve_out(out)
+    if not (run_dir / "final.pt").exists():
+        raise SystemExit(f"no trained model at {run_dir / 'final.pt'}")
 
-    data = EnsembleGaitPhase()
-    print(f"scoring {args.split}...")
-    res, modes, subjects = collect(run, args.split, data)
+    data = EnsembleGaitPhase(batch_size=batch_size)
+    print(f"scoring {split}...")
+    res, modes, subjects = collect(run_dir, split, data)
 
-    fig_dir = run / "figures"
+    fig_dir = run_dir / "figures"
     print(f"\nwriting figures to {fig_dir}")
     fig_psi_by_task(res, modes, fig_dir)
     fig_roc(res, fig_dir)
     fig_detection_by_task(res, modes, fig_dir)
-    _, folds = fig_loso(run, fig_dir)
-    fig_training(run, fig_dir)
+    _, folds = fig_loso(run_dir, fig_dir)
+    fig_training(run_dir, fig_dir)
 
-    text = summary(res, modes, run, folds, args.split)
-    (run / "summary.md").write_text(text)
-    print(f"\nwrote {run / 'summary.md'}\n")
+    text = summary(res, modes, run_dir, folds, split)
+    (run_dir / "summary.md").write_text(text)
+    print(f"\nwrote {run_dir / 'summary.md'}\n")
     print(text)
     return 0
+
+
+def main() -> int:
+    p = argparse.ArgumentParser(description="Ensemble figures and summary.")
+    p.add_argument("--out", default="ml/vanilla/runs/paper")
+    p.add_argument("--split", default="test", choices=("val", "test"))
+    p.add_argument("--batch-size", type=int, default=1024)
+    p.add_argument("--device", default=None)
+    p.add_argument("--reuse", action="store_true", help="accepted for interface parity")
+    a = p.parse_args()
+    return run(a.out, a.split, a.batch_size, a.device, a.reuse)
 
 
 if __name__ == "__main__":

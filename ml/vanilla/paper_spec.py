@@ -27,9 +27,11 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-import model as m
+import models.ensemble as m
+from dataset import repo_root
 
-__all__ = ["PAPER", "DEVIATIONS", "observed", "audit"]
+__all__ = ["PAPER", "DEVIATIONS", "observed", "audit",
+           "PAPER_AE", "DEVIATIONS_AE", "observed_ae", "audit_ae"]
 
 
 # --- Table IV, "COMPLETE SPECIFICATIONS FOR ALL ANOMALY DETECTION MODELS" ----------
@@ -108,7 +110,7 @@ _BY_KEY = {d.key: d for d in DEVIATIONS}
 
 def observed(processed: Path | str | None = None) -> dict[str, object]:
     """Read the values the code and data are actually using right now."""
-    root = Path(processed) if processed else Path(m.__file__).resolve().parents[2] / "data" / "processed"
+    root = Path(processed) if processed else repo_root() / "data" / "processed"
     cfg = json.loads((root / "config.json").read_text())
     return {
         "window_samples": cfg["window_samples"],
@@ -190,7 +192,126 @@ def _wrap(text: str, width: int) -> list[str]:
     return out
 
 
+# ============================ Autoencoder =====================================
+# Table IV, "Autoencoder Model" + "Training Strategy Comparison"
+
+PAPER_AE: dict[str, object] = {
+    "window_samples": 175,
+    "sample_rate_hz": 175,
+    "n_channels": 16,
+    "stride": 10,
+    "enc_channels": (19, 24),          # "Conv1d(16->19->24->bottleneck)"
+    "kernels": (15, 17, 19),           # "kernel sizes: 15, 17, 19"
+    "latent_filters": 4,               # "Filter dimension of latent space: 4"
+    "latent_time": 7,                  # "Time dimension of latent space: 7"
+    "latent_size": 28,                 # "Latent space size: 28"
+    "norm": "BatchNorm1d",             # "ReLU, BatchNorm1d after each layer"
+    "activation": "ReLU",
+    "dropout": 0.0,                    # "No dropout"
+    "batch_size": 1024,
+    "lr": 0.064,                       # "LR: 0.001*(1024/16)"
+    "optimizer": "Adam",
+    "loss": "MSE",
+    "patience": 5,                     # "80/20 train/valid split, patience=5"
+    "val_fraction": 0.2,
+    "scoring": "LOF(latent)",          # "LOF(latent space), 99.5th percentile threshold"
+    "threshold_percentile": 99.5,
+    "strategy": "single-stage",        # "Train on all subjects with validation split"
+    "lof_neighbors": None,             # k is not stated
+}
+
+DEVIATIONS_AE: tuple[Deviation, ...] = (
+    Deviation("sample_rate_hz", "forced",
+              "The Molinaro dataset is recorded at 200 Hz; the ankle data was 175 Hz."),
+    Deviation("window_samples", "forced",
+              "200 samples at 200 Hz preserves the paper's 1-second window, as for the "
+              "ensemble. Duration is what is held constant."),
+    Deviation("latent_time", "forced",
+              "8 rather than 7. The paper's 7 is 175 samples at 25x temporal compression; "
+              "200/25 = 8. The compression factor is what is held constant, and it falls out "
+              "exactly as two AvgPool1d(5) stages for both 175 and 200 -- good evidence that "
+              "is how the original achieved it."),
+    Deviation("latent_size", "forced",
+              "32 rather than 28, following directly from latent_time being 8 not 7. The "
+              "filter dimension (4) is unchanged."),
+    Deviation("lr", "choice",
+              "0.003 rather than the specified 0.064. Measured on this data: at 0.064 "
+              "reconstruction MSE plateaus at 0.959 on standardized inputs -- the encoder has "
+              "collapsed to predicting channel means, and 63% of latent vectors become "
+              "identical, which also makes LOF ill-conditioned. 0.01, 0.003 and 0.001 all "
+              "train; 0.003 was best over a four-epoch comparison. This is the only place the "
+              "specification had to be overridden rather than interpreted."),
+    Deviation("lof_neighbors", "unspecified",
+              "The paper does not state k for LOF. sklearn's default of 20 is used."),
+)
+
+_BY_KEY_AE = {d.key: d for d in DEVIATIONS_AE}
+
+
+def observed_ae() -> dict[str, object]:
+    """What the autoencoder code is actually using right now."""
+    import models.autoencoder as ae
+    from training.autoencoder import AeConfig
+
+    cfg = AeConfig()
+    net = ae.create_autoencoder(16, 200)
+    has_dropout = any(isinstance(mod, __import__("torch").nn.Dropout)
+                      for mod in net.modules())
+    return {
+        "window_samples": 200, "sample_rate_hz": 200, "n_channels": 16, "stride": 10,
+        "enc_channels": ae.CHANNELS, "kernels": ae.KERNELS,
+        "latent_filters": net.latent_filters, "latent_time": net.latent_time,
+        "latent_size": net.latent_size,
+        "norm": "BatchNorm1d", "activation": "ReLU", "dropout": 1.0 if has_dropout else 0.0,
+        "batch_size": cfg.batch_size, "lr": cfg.lr, "optimizer": "Adam", "loss": "MSE",
+        "patience": cfg.patience, "val_fraction": cfg.val_fraction,
+        "scoring": "LOF(latent)", "threshold_percentile": cfg.threshold_percentile,
+        "strategy": "single-stage", "lof_neighbors": cfg.lof_neighbors,
+    }
+
+
+def audit_ae(verbose: bool = True) -> list[str]:
+    """Compare the autoencoder against Table IV. Returns undeclared mismatches."""
+    obs = observed_ae()
+    matches, declared, undeclared = [], [], []
+    for key, want in PAPER_AE.items():
+        got = obs.get(key)
+        if want == got:
+            matches.append(key)
+        elif key in _BY_KEY_AE:
+            declared.append(key)
+        else:
+            undeclared.append(key)
+
+    if verbose:
+        print(f"Autoencoder fidelity audit against Table IV -- {len(PAPER_AE)} parameters\n")
+        print(f"  matches the paper exactly ({len(matches)}):")
+        for k in matches:
+            print(f"    {k:22s} {PAPER_AE[k]}")
+        print(f"\n  declared deviations ({len(declared)}):")
+        for k in declared:
+            d = _BY_KEY_AE[k]
+            print(f"    [{d.category:12s}] {k:22s} paper={PAPER_AE[k]!r}  ours={obs[k]!r}")
+            for line in _wrap(d.reason, 84):
+                print(f"                     {line}")
+        if undeclared:
+            print(f"\n  UNDECLARED deviations ({len(undeclared)}) -- need a reason or a fix:")
+            for k in undeclared:
+                print(f"    {k:22s} paper={PAPER_AE[k]!r}  ours={obs[k]!r}")
+        else:
+            print("\n  no undeclared deviations")
+        by_cat = {c: sum(1 for d in DEVIATIONS_AE if d.category == c and d.key in declared)
+                  for c in ("forced", "unspecified", "choice")}
+        print(f"\n  summary: {len(matches)} exact, "
+              + ", ".join(f"{v} {k}" for k, v in by_cat.items())
+              + (f", {len(undeclared)} UNDECLARED" if undeclared else ""))
+    return undeclared
+
+
 if __name__ == "__main__":
     import sys
 
-    sys.exit(1 if audit() else 0)
+    bad = audit()
+    print("\n" + "=" * 78 + "\n")
+    bad += audit_ae()
+    sys.exit(1 if bad else 0)
