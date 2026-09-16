@@ -33,8 +33,8 @@ import pandas as pd
 import torch
 from torch.utils.data import BatchSampler, DataLoader, Dataset, RandomSampler, SequentialSampler
 
-__all__ = ["EnsembleGaitPhase", "AutoencoderData", "Split", "OodSplit",
-           "PlainSplit", "repo_root"]
+__all__ = ["EnsembleGaitPhase", "AutoencoderData", "GanData", "Split",
+           "OodSplit", "PlainSplit", "repo_root"]
 
 SPLITS = ("train", "val", "test")
 
@@ -485,6 +485,40 @@ class AutoencoderData:
                 val_subs)
 
 
+class GanData(AutoencoderData):
+    """Data for the GAN. Same windows as the autoencoder, sampled more sparsely for training.
+
+    Table IV gives the GAN ``Step: 20`` where the ensemble and autoencoder use ``Step: 10`` —
+    it trains on every *twentieth* window rather than every tenth. Since the stored arrays are
+    already cut at stride 10, that is every second row, which halves the training set.
+
+    **The subsampling applies to training only.** Evaluation scores every window in the test
+    split, exactly as the other models do, so the cross-model comparison rests on one identical
+    set of test windows. Subsampling the test set as well would make the GAN's numbers
+    incomparable for no benefit — the stride is a statement about training-set redundancy, not
+    about which windows are legitimate to score.
+    """
+
+    stride_factor = 2          # models.gan.WINDOW_STRIDE_FACTOR
+
+    def __repr__(self) -> str:
+        base = super().__repr__().replace("AutoencoderData", "GanData")
+        n_tr = len(self.train_indices())
+        return base[:-1] + f", train_subsampled={n_tr:,})"
+
+    def train_indices(self, split: str = "train") -> np.ndarray:
+        """Every ``stride_factor``-th window — the Step-20 training set."""
+        return np.arange(0, len(self.splits[split]), self.stride_factor, dtype=np.int64)
+
+    def train_val_indices(self, frac: float = 0.2, seed: int = 0):
+        """The 80/20 participant split, then subsampled to the GAN's stride."""
+        tr, va, val_subs = super().train_val_indices(frac, seed)
+        keep = set(self.train_indices().tolist())
+        tr = np.array([i for i in tr if i in keep], dtype=np.int64)
+        va = np.array([i for i in va if i in keep], dtype=np.int64)
+        return tr, va, val_subs
+
+
 if __name__ == "__main__":  # python ml/vanilla/dataset.py
     ae = AutoencoderData()
     print(ae)
@@ -494,6 +528,14 @@ if __name__ == "__main__":  # python ml/vanilla/dataset.py
         print(f"  {sp}")
     tr, va, vs = ae.train_val_indices()
     print(f"  80/20 by participant: {len(tr):,} train / {len(va):,} val  (val subjects {vs})")
+    print()
+
+    gan = GanData()
+    print(gan)
+    gtr, gva, _ = gan.train_val_indices()
+    print(f"  Step-20 subsample: {len(gtr):,} train / {len(gva):,} val "
+          f"(vs the AE's {len(tr):,} / {len(va):,})")
+    print(f"  test split unchanged for comparability: {len(gan.test):,} windows")
     print()
 
     data = EnsembleGaitPhase()

@@ -13,8 +13,8 @@ the registry does not import torch, sklearn and every model at once. That matter
 ``main.py --help``, and it means a half-finished model cannot break the CLI for the others.
 
 The four architectures of the paper's Table I: the gait-phase ensemble and the autoencoder are
-implemented; the synthetic-target ensemble and the GAN are declared but not yet built, and
-``available()`` reports which is which rather than failing at import.
+implemented, as is the GAN; the synthetic-target ensemble is declared but not yet built,
+and ``available()`` reports which is which rather than failing at import.
 """
 
 from __future__ import annotations
@@ -126,6 +126,36 @@ def _ae_audit():
     return audit_ae
 
 
+def _gan_data():
+    from dataset import GanData
+    return GanData
+
+
+def _gan_config():
+    from training.gan import GanConfig
+    return GanConfig
+
+
+def _gan_train():
+    from training.gan import train_paper_protocol
+    return train_paper_protocol
+
+
+def _gan_eval():
+    from evaluation.gan import evaluate_gan
+    return evaluate_gan
+
+
+def _gan_figures():
+    from evaluation.plots_gan import run
+    return run
+
+
+def _gan_audit():
+    from paper_spec import audit_gan
+    return audit_gan
+
+
 REGISTRY: dict[str, ModelSpec] = {
     "ensemble": ModelSpec(
         name="ensemble",
@@ -164,9 +194,13 @@ REGISTRY: dict[str, ModelSpec] = {
         description="TCN GAN; Psi = 1 - D(x) from the discriminator",
         default_run="ml/vanilla/runs/gan",
         paper_row="GAN — F1 71.5",
-        notes=("not implemented yet",
-               "label-free, reads data/processed/AE_GAN/",
+        data=_gan_data, config=_gan_config, train=_gan_train,
+        evaluate=_gan_eval, figures=_gan_figures, audit=_gan_audit,
+        notes=("label-free, reads data/processed/AE_GAN/ at Table IV's Step 20 (every 2nd "
+               "window) for training; the test split is scored unsubsampled",
                "500 fixed epochs at batch 256, 5 generator updates per discriminator update",
+               "no early stopping -- a GAN has no reliable signal for it",
+               "watch D(real) and D(fake): a discriminator that wins makes Psi degenerate",
                "the expensive one, and the only model likely to be compute-bound"),
     ),
 }

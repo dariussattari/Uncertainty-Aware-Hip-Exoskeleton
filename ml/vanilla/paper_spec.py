@@ -31,7 +31,8 @@ import models.ensemble as m
 from dataset import repo_root
 
 __all__ = ["PAPER", "DEVIATIONS", "observed", "audit",
-           "PAPER_AE", "DEVIATIONS_AE", "observed_ae", "audit_ae"]
+           "PAPER_AE", "DEVIATIONS_AE", "observed_ae", "audit_ae",
+           "PAPER_GAN", "DEVIATIONS_GAN", "observed_gan", "audit_gan"]
 
 
 # --- Table IV, "COMPLETE SPECIFICATIONS FOR ALL ANOMALY DETECTION MODELS" ----------
@@ -308,10 +309,179 @@ def audit_ae(verbose: bool = True) -> list[str]:
     return undeclared
 
 
+# ============================ GAN =============================================
+# Table IV, "GAN Model"
+
+PAPER_GAN: dict[str, object] = {
+    "window_samples": 175,
+    "sample_rate_hz": 175,
+    "n_channels": 16,
+    # "Step: 20" -- twice the other models'. The stored windows are already cut at stride
+    # 10, so this is realised as training on every second stored window (GanData.stride_factor)
+    # and it applies to TRAINING ONLY: the test split is scored unsubsampled so all four
+    # models are compared on one identical set of test windows.
+    "stride": 20,
+    "g_channels": (10, 12, 16),        # "ConvTranspose1d(10->10->12->16)"
+    "g_kernel": 3,
+    "g_activation": "LeakyReLU(0.2)",
+    "g_norm": None,                    # not stated for the generator
+    "d_channels": (30, 30),            # "Conv1d(16->30->30)"
+    "d_kernel": 5,
+    "d_activation": "ReLU",
+    "d_dropout": 0.2,
+    "d_spectral_norm": True,
+    "d_output": "sigmoid",
+    "latent_channels": 10,             # "Filter dimension of latent space: 10"
+    "latent_time": 35,                 # "Time dimension of latent space: 35"
+    "upsample_factor": 5,              # 175 / 35; the generator's total upsampling
+    "batch_size": 256,
+    "lr_g": 2e-4,
+    "lr_d": 5e-5,
+    "lr_decay": 0.99,                  # "exponential decay, gamma=0.99"
+    "betas": (0.5, 0.999),
+    "optimizer": "Adam",
+    "loss": "BCE",
+    "max_epochs": 500,                 # "500 epochs, fixed"
+    "early_stopping": False,
+    "val_fraction": 0.2,
+    "g_steps_per_d": 5,                # "5 generator updates per discriminator update"
+    "checkpoint_every": 5,
+    "scoring": "1-D(x)",
+    "threshold_percentile": 99.5,
+    "strategy": "single-stage",
+    "noise_distribution": None,        # not stated
+    "upsample_distribution": None,     # how the 5x splits over three layers is not stated
+    "d_head": None,                    # the reduction to a scalar is not stated
+}
+
+DEVIATIONS_GAN: tuple[Deviation, ...] = (
+    Deviation("sample_rate_hz", "forced",
+              "The Molinaro dataset is recorded at 200 Hz; the ankle data was 175 Hz."),
+    Deviation("window_samples", "forced",
+              "200 samples at 200 Hz preserves the paper's 1-second window. Duration is what "
+              "is held constant, as for the ensemble and the autoencoder."),
+    Deviation("latent_time", "forced",
+              "40 rather than 35. The paper's 35 is 175 samples at a 5x generator upsample; "
+              "200/5 = 40. The upsample factor is what is held constant, and it is exactly 5 "
+              "for both window lengths -- the same clean scaling the autoencoder's pooling "
+              "showed. The filter dimension (10) is unchanged."),
+    Deviation("upsample_distribution", "unspecified",
+              "Three transpose layers must multiply to 5x and the paper does not say how it "
+              "is divided. (5, 1, 1) is used: the stride on the first layer, the remaining "
+              "two refining at full resolution. This is the simplest reading and the only one "
+              "that needs no non-integer stride."),
+    Deviation("d_head", "unspecified",
+              "The specification ends at Conv1d(16->30->30) and a sigmoid, with no stated "
+              "reduction from 30 channels x 200 timesteps to one number. Global average "
+              "pooling then a linear layer is used, which keeps the verdict invariant to "
+              "where in the window an anomaly falls."),
+    Deviation("g_norm", "unspecified",
+              "Table IV names BatchNorm1d for the autoencoder and dropout for the "
+              "discriminator, but states no normalisation for the generator. BatchNorm1d on "
+              "the two hidden transpose layers is used (output left linear), which is "
+              "standard DCGAN practice. Flagging it because it is not neutral here: the "
+              "generator's output is under-dispersed (mean per-channel sd 0.59 against the "
+              "data's 1.03), and that under-dispersion is what lets the discriminator "
+              "separate real from generated on amplitude alone. Generator normalisation is "
+              "therefore one of the few levers that could plausibly change this model's "
+              "result, and it is an inference rather than a specification."),
+    Deviation("noise_distribution", "unspecified",
+              "Not stated. A standard normal latent is used, which is the default for "
+              "essentially every convolutional GAN."),
+    Deviation("d_output", "choice",
+              "The discriminator returns a logit and the sigmoid lives inside "
+              "BCEWithLogitsLoss rather than in the module. Mathematically identical to the "
+              "specified sigmoid output with BCE, and numerically stabler; "
+              "Discriminator.probability() and HipGan.uncertainty() apply the sigmoid "
+              "explicitly, so D(x) in [0,1] is what the scorer sees."),
+)
+
+_BY_KEY_GAN = {d.key: d for d in DEVIATIONS_GAN}
+
+
+def observed_gan() -> dict[str, object]:
+    """What the GAN code is actually using right now."""
+    import torch.nn as nn
+
+    import models.gan as g
+    from dataset import GanData
+    from training.gan import GanConfig
+
+    cfg = GanConfig()
+    net = g.create_gan(16, 200)
+    d = net.discriminator
+    spectral = any("parametrizations" in n for n, _ in d.named_parameters())
+    drop = [m.p for m in d.modules() if isinstance(m, nn.Dropout)]
+    total_up = 1
+    for u in g.UPSAMPLE:
+        total_up *= u
+    return {
+        "window_samples": 200, "sample_rate_hz": 200, "n_channels": 16,
+        "stride": 10 * GanData.stride_factor,
+        "g_channels": g.G_CHANNELS, "g_kernel": g.G_KERNEL,
+        "g_activation": f"LeakyReLU({g.LEAKY_SLOPE})",
+        "g_norm": "BatchNorm1d (hidden layers only)",
+        "d_channels": g.D_CHANNELS, "d_kernel": g.D_KERNEL,
+        "d_activation": "ReLU", "d_dropout": drop[0] if drop else 0.0,
+        "d_spectral_norm": spectral, "d_output": "logit (sigmoid in the loss)",
+        "latent_channels": net.latent_shape[0], "latent_time": net.latent_shape[1],
+        "upsample_factor": total_up,
+        "batch_size": cfg.batch_size, "lr_g": cfg.lr, "lr_d": cfg.lr_d,
+        "lr_decay": cfg.lr_decay, "betas": cfg.betas, "optimizer": "Adam", "loss": "BCE",
+        "max_epochs": cfg.max_epochs, "early_stopping": False,
+        "val_fraction": cfg.val_fraction, "g_steps_per_d": cfg.g_steps_per_d,
+        "checkpoint_every": cfg.checkpoint_every, "scoring": "1-D(x)",
+        "threshold_percentile": cfg.threshold_percentile, "strategy": "single-stage",
+        "noise_distribution": "standard normal",
+        "upsample_distribution": g.UPSAMPLE,
+        "d_head": "AdaptiveAvgPool1d(1) + Linear",
+    }
+
+
+def audit_gan(verbose: bool = True) -> list[str]:
+    """Compare the GAN against Table IV. Returns undeclared mismatches."""
+    obs = observed_gan()
+    matches, declared, undeclared = [], [], []
+    for key, want in PAPER_GAN.items():
+        got = obs.get(key)
+        if want == got:
+            matches.append(key)
+        elif key in _BY_KEY_GAN:
+            declared.append(key)
+        else:
+            undeclared.append(key)
+
+    if verbose:
+        print(f"GAN fidelity audit against Table IV -- {len(PAPER_GAN)} parameters\n")
+        print(f"  matches the paper exactly ({len(matches)}):")
+        for k in matches:
+            print(f"    {k:24s} {PAPER_GAN[k]}")
+        print(f"\n  declared deviations ({len(declared)}):")
+        for k in declared:
+            d = _BY_KEY_GAN[k]
+            print(f"    [{d.category:12s}] {k:24s} paper={PAPER_GAN[k]!r}  ours={obs[k]!r}")
+            for line in _wrap(d.reason, 84):
+                print(f"                       {line}")
+        if undeclared:
+            print(f"\n  UNDECLARED deviations ({len(undeclared)}) -- need a reason or a fix:")
+            for k in undeclared:
+                print(f"    {k:24s} paper={PAPER_GAN[k]!r}  ours={obs[k]!r}")
+        else:
+            print("\n  no undeclared deviations")
+        by_cat = {c: sum(1 for d in DEVIATIONS_GAN if d.category == c and d.key in declared)
+                  for c in ("forced", "unspecified", "choice")}
+        print(f"\n  summary: {len(matches)} exact, "
+              + ", ".join(f"{v} {k}" for k, v in by_cat.items())
+              + (f", {len(undeclared)} UNDECLARED" if undeclared else ""))
+    return undeclared
+
+
 if __name__ == "__main__":
     import sys
 
     bad = audit()
     print("\n" + "=" * 78 + "\n")
     bad += audit_ae()
+    print("\n" + "=" * 78 + "\n")
+    bad += audit_gan()
     sys.exit(1 if bad else 0)

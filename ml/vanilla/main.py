@@ -15,7 +15,7 @@ plots, so this file contains no model-specific logic beyond the two evaluator si
 Checkpoint layout is common to every model: ``<run>/final.pt`` holds the weights and the
 calibrated threshold, ``<run>/report.json`` the training record, ``<run>/figures/`` the plots.
 Model-specific extras sit alongside — the autoencoder also writes ``lof.pkl`` and
-``latents_<split>.npz``.
+``latents_<split>.npz``, the GAN ``scores_<split>.npz``.
 
 ``<run>/eval_<split>.json`` uses one schema for every model, so a cross-model comparison never
 has to branch on which produced the file::
@@ -24,12 +24,15 @@ has to branch on which produced the file::
      "metrics": {accuracy, precision, recall, specificity, f1, j_statistic, auroc, ece,
                  brier, n_id, n_ood, pct_ood, counts},
      "per_mode": [{mode, kind, windows, ...}],
-     "extra": {...}}          # model-specific; the AE puts its rejected score here
+     "extra": {...}}          # model-specific: the AE puts its rejected reconstruction
+                              # score here, the GAN its discriminator-health check
 
 Only ``extra`` is allowed to differ between models.
 
 Runtimes differ by orders of magnitude: the autoencoder is minutes, the ensemble's full
-two-stage protocol is hours. ``--folds`` trims the ensemble's LOSO for a cheaper first pass.
+two-stage protocol and the GAN's 500 fixed epochs are hours. ``--folds`` trims the ensemble's
+LOSO for a cheaper first pass; ``--max-epochs`` trims the GAN's fixed schedule, at the cost of
+that being a declared departure from Table IV rather than a reproduction.
 """
 
 from __future__ import annotations
@@ -67,6 +70,16 @@ def _make_config(parts, **overrides):
     return cls(**{k: v for k, v in overrides.items() if k in valid and v is not None})
 
 
+def _batch_size(args, parts) -> int:
+    """``--batch-size`` if given, else the model's own Table IV value.
+
+    There is no single right default: Table IV gives 1024 for the ensemble and autoencoder
+    but 256 for the GAN. A shared CLI default would silently override one of them, so the
+    flag defaults to None and the model's config supplies the paper's number.
+    """
+    return args.batch_size or parts["config"]().batch_size
+
+
 def cmd_models(args) -> int:
     print("Registered models — the four architectures of the paper's Table I\n")
     print(registry.describe())
@@ -80,10 +93,11 @@ def cmd_audit(args) -> int:
 
 def cmd_train(args) -> int:
     spec, parts = _spec_and_parts(args)
-    data = parts["data"](batch_size=args.batch_size)
+    bs = _batch_size(args, parts)
+    data = parts["data"](batch_size=bs)
     print(data)
     run = _run_dir(args, spec)
-    cfg = _make_config(parts, lr=args.lr, batch_size=args.batch_size,
+    cfg = _make_config(parts, lr=args.lr, batch_size=bs,
                        max_epochs=args.max_epochs, patience=args.patience,
                        seed=args.seed, device=args.device, out_dir=str(run),
                        loso_folds=getattr(args, "folds", None))
@@ -100,14 +114,16 @@ def cmd_eval(args) -> int:
     if not (run / "final.pt").exists():
         print(f"no checkpoint at {run/'final.pt'} — run `train --model {spec.name}` first.")
         return 1
-    data = parts["data"](batch_size=args.batch_size)
+    bs = _batch_size(args, parts)
+    data = parts["data"](batch_size=bs)
     print(data, "\n")
     device = pick_device(args.device)
 
-    # The two evaluators differ in signature by necessity -- the ensemble scores from a model
-    # object plus a threshold, the autoencoder from a run directory (it also needs its LOF).
-    # Both are normalised into one result schema below, so downstream consumers and the
-    # cross-model comparison do not have to branch on which model produced a file.
+    # The evaluators differ in signature by necessity -- the ensemble scores from a model
+    # object plus a threshold, while the autoencoder and GAN score from a run directory (the
+    # autoencoder also needs its fitted LOF). All are normalised into one result schema below,
+    # so downstream consumers and the cross-model comparison do not have to branch on which
+    # model produced a file.
     if spec.name == "ensemble":
         from evaluation.ensemble import load_checkpoint
         from training.ensemble import fit_threshold
@@ -116,16 +132,26 @@ def cmd_eval(args) -> int:
             print("checkpoint has no threshold; recalibrating from training data")
             threshold, _ = fit_threshold(model, data)
         res = parts["evaluate"](model, data, threshold, split=args.split, device=device,
-                                batch_size=args.batch_size, filter_kind=args.filter,
+                                batch_size=bs, filter_kind=args.filter,
                                 filter_scores=args.filter_scores)
         metrics = {k: v for k, v in res.metrics.items() if k != "steepness"}
         per_mode = res.per_mode.to_dict("records")
         threshold, steepness, extra = res.threshold, res.steepness, {}
         np.savez_compressed(run / f"scores_{args.split}.npz",
                             scores=res.scores, labels=res.labels)
+    elif spec.name == "gan":
+        from evaluation.gan import per_mode_table
+        scores, m = parts["evaluate"](run, data, args.split, device, bs)
+        scores.save(run / f"scores_{args.split}")
+        metrics = {k: v for k, v in m.items() if k not in ("degeneracy", "steepness")}
+        per_mode = per_mode_table(scores).to_dict("records")
+        threshold, steepness = scores.threshold, m.get("steepness")
+        # The GAN's extra is its health check: the discriminator is the detector, so whether
+        # its output still has spread decides whether the metrics above mean anything.
+        extra = {"discriminator_health": m.get("degeneracy")}
     else:
         from evaluation.autoencoder import per_mode_table
-        bundle, m = parts["evaluate"](run, data, args.split, device, args.batch_size)
+        bundle, m = parts["evaluate"](run, data, args.split, device, bs)
         bundle.save(run / f"latents_{args.split}")
         metrics = {k: v for k, v in m.items() if k not in ("recon", "steepness", "latent_dim")}
         per_mode = per_mode_table(bundle).to_dict("records")
@@ -154,19 +180,22 @@ def cmd_figures(args) -> int:
     if not (run / "final.pt").exists():
         print(f"no checkpoint at {run/'final.pt'} — run `train --model {spec.name}` first.")
         return 1
-    return parts["figures"](out=str(run), split=args.split, batch_size=args.batch_size,
+    return parts["figures"](out=str(run), split=args.split,
+                            batch_size=_batch_size(args, parts),
                             device=args.device, reuse=getattr(args, "reuse", False))
 
 
 def cmd_smoke(args) -> int:
     """Cheap end-to-end check. Proves the wiring, not the science."""
     spec, parts = _spec_and_parts(args)
-    data = parts["data"](batch_size=args.batch_size)
+    bs = _batch_size(args, parts)
+    data = parts["data"](batch_size=bs)
     print(data)
     run = resolve_out(f"ml/vanilla/runs/{spec.name}_smoke")
     cfg = _make_config(parts, max_epochs=2, patience=1, device=args.device,
-                       batch_size=args.batch_size, out_dir=str(run),
-                       loso_folds=2, lof_fit_samples=5_000)
+                       batch_size=bs, out_dir=str(run),
+                       loso_folds=2, lof_fit_samples=5_000,
+                       checkpoint_every=1, monitor_windows=1_024)
     print(f"\nsmoke: {spec.name} on {pick_device(args.device)} -> {run}\n")
     parts["train"](data, cfg)
     return 0
@@ -187,7 +216,9 @@ def build_parser() -> argparse.ArgumentParser:
         sp.add_argument("--model", required=True, choices=registry.names(),
                         help="which architecture (see `main.py models`)")
         sp.add_argument("--out", default=None, help="run directory (default: per-model)")
-        sp.add_argument("--batch-size", type=int, default=1024)
+        sp.add_argument("--batch-size", type=int, default=None,
+                        help="default: the model's own Table IV value "
+                             "(1024 for the ensemble and autoencoder, 256 for the GAN)")
         sp.add_argument("--device", default=None, help="cuda / mps / cpu")
         return sp
 
