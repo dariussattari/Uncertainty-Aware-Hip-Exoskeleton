@@ -176,11 +176,21 @@ def train_gait_ensemble(
     return model, history
 
 
-def run_loso(data: EnsembleGaitPhase, cfg: TrainConfig | None = None) -> dict:
+def _default_model(data, cfg):
+    return create_ensemble(data.n_channels, data.n_targets, cfg.n_members)
+
+
+def run_loso(data: EnsembleGaitPhase, cfg: TrainConfig | None = None,
+             make_model=_default_model) -> dict:
     """Stage 1 — leave-one-subject-out, to determine the epoch count.
 
     Each fold holds one training subject out as the early-stopping set. The returned
     ``n_epochs`` is the rounded mean of the per-fold best epochs, which Stage 2 then uses.
+
+    ``make_model(data, cfg)`` is injected so the synthetic-target experiments can supply a
+    linear-headed ensemble without duplicating this protocol. Everything else — the fold
+    construction, the resume ledger, the epoch-averaging rule — is shared, which is the point:
+    Experiments 1 and 4-6 differ only in target and head.
     """
     cfg = cfg or TrainConfig()
     device = pick_device(cfg.device)
@@ -207,7 +217,7 @@ def run_loso(data: EnsembleGaitPhase, cfg: TrainConfig | None = None) -> dict:
             print(f"\n[{i}/{len(folds)}] {subject} already done, skipping")
             continue
         torch.manual_seed(cfg.seed + i)
-        model = create_ensemble(data.n_channels, data.n_targets, cfg.n_members)
+        model = make_model(data, cfg)
         print(f"\n[{i}/{len(folds)}] hold out {subject}  "
               f"({len(train_idx):,} train / {len(held_idx):,} held out)")
 
@@ -251,7 +261,8 @@ def fit_threshold(model, data: EnsembleGaitPhase, cfg: TrainConfig | None = None
     return threshold, scores
 
 
-def train_paper_protocol(data: EnsembleGaitPhase, cfg: TrainConfig | None = None):
+def train_paper_protocol(data: EnsembleGaitPhase, cfg: TrainConfig | None = None,
+                         make_model=_default_model):
     """The full recipe: LOSO -> retrain on all subjects -> calibrate the threshold.
 
     Returns ``(model, threshold, report)`` and writes both to ``cfg.out_dir``.
@@ -261,12 +272,12 @@ def train_paper_protocol(data: EnsembleGaitPhase, cfg: TrainConfig | None = None
     out = resolve_out(cfg.out_dir)
     out.mkdir(parents=True, exist_ok=True)
 
-    stage1 = run_loso(data, cfg)
+    stage1 = run_loso(data, cfg, make_model)
 
     print(f"\nStage 2: retraining on all {len(data.train.subjects)} subjects "
           f"for {stage1['n_epochs']} epochs")
     torch.manual_seed(cfg.seed)
-    model = create_ensemble(data.n_channels, data.n_targets, cfg.n_members)
+    model = make_model(data, cfg)
     model, hist = train_gait_ensemble(
         model,
         data.loader("train", batch_size=cfg.batch_size, shuffle=True, seed=cfg.seed),
@@ -279,6 +290,9 @@ def train_paper_protocol(data: EnsembleGaitPhase, cfg: TrainConfig | None = None
     print(f"held-out validation loss: {val_loss:.5f}")
 
     report = {"config": {k: v for k, v in asdict(cfg).items() if k != "history"},
+              "target": getattr(data, "target", "gait_phase"),
+              "target_names": getattr(data, "target_names", ["sin_gp_l", "sin_gp_r"]),
+              "horizon": getattr(data, "horizon", None),
               "stage1": stage1, "stage2_history": hist,
               "threshold": threshold, "val_loss": val_loss,
               "psi_train": {"median": float(np.median(scores)), "mean": float(scores.mean())}}

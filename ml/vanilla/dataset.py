@@ -33,8 +33,8 @@ import pandas as pd
 import torch
 from torch.utils.data import BatchSampler, DataLoader, Dataset, RandomSampler, SequentialSampler
 
-__all__ = ["EnsembleGaitPhase", "AutoencoderData", "GanData", "Split",
-           "OodSplit", "PlainSplit", "repo_root"]
+__all__ = ["EnsembleGaitPhase", "AutoencoderData", "GanData",
+           "SyntheticEnsembleData", "Split", "OodSplit", "PlainSplit", "repo_root"]
 
 SPLITS = ("train", "val", "test")
 
@@ -545,3 +545,251 @@ if __name__ == "__main__":  # python ml/vanilla/dataset.py
         print(f"  {sp}")
         print(f"      x{tuple(x.shape)} {x.dtype} | mean {x.mean():+.3f} std {x.std():.3f} "
               f"| labelled L {m[:, 0].mean():.0%} R {m[:, 1].mean():.0%}")
+
+
+class SyntheticEnsembleData(AutoencoderData):
+    """Data for the ensemble trained on a **label-free** target (Experiments 4-6).
+
+    Presents exactly the interface :class:`EnsembleGaitPhase` does — ``loader`` yields
+    ``(x, y, mask)``, plus ``loso_folds``, ``n_targets`` and ``ood_loader`` — so the two-stage
+    training protocol and the evaluator in ``evaluation/ensemble.py`` work unchanged. What
+    differs is where ``y`` comes from: it is computed from the input window rather than read
+    from disk, which is the whole point. Gait phase is recovered from force plates offline and
+    does not exist at run time; every target here does.
+
+    Reads ``data/processed/AE_GAN/`` rather than ``data/processed/``, so it inherits the larger
+    unmasked window set the autoencoder and GAN use — dropping the gait-phase label requirement
+    recovers about 19,000 windows.
+
+    Three targets, selected by ``target=``:
+
+    ``"correlation"``
+        The reference work's own synthetic target: the sum of the 120 pairwise channel
+        correlations over the window. One output. Standardized using training-split statistics
+        (see ``target_stats``).
+    ``"forecast_angle"``
+        Hip angle for both legs, ``horizon`` samples after the window ends. Two outputs.
+    ``"forecast_all"``
+        All sixteen channels at the same horizon. Sixteen outputs.
+
+    **The mask is load-bearing here too, for a different reason than in Experiment 1.** A
+    forecast target does not exist for windows at the end of a trial — there is no later row to
+    read it from. Those windows carry ``mask = 0`` and are excluded from the loss. Filling them
+    with zeros instead would train the model toward the channel mean, a plausible value that is
+    not an observation. At a horizon of 40 this affects 0.56% of windows. The correlation target
+    is defined for every window, so its mask is all ones and the masked loss reduces to a plain
+    one.
+    """
+
+    TARGETS = ("correlation", "forecast_angle", "forecast_all")
+
+    def __init__(self, root: Path | str | None = None, batch_size: int = 1024,
+                 scale: bool = True, target: str = "correlation",
+                 horizon: int | None = None, min_sd: float | None = None,
+                 standardize_target: bool = True, cache: bool = True):
+        super().__init__(root, batch_size, scale)
+        if target not in self.TARGETS:
+            raise ValueError(f"target must be one of {self.TARGETS}, got {target!r}")
+
+        import targets as T
+
+        self.target = target
+        self.horizon = T.DEFAULT_HORIZON if horizon is None else int(horizon)
+        self.min_sd = T.MIN_SD if min_sd is None else float(min_sd)
+        self._T = T
+
+        if target == "correlation":
+            self._channels_out = None
+            self._fwd = {}
+        else:
+            want = T.ANGLE_CHANNELS if target == "forecast_angle" else tuple(self.channels)
+            self._channels_out = T.channel_indices(self.channels, want)
+            # row -> row holding its future value, per split (including the OOD splits, which
+            # need targets only if one wants to inspect them; Psi never uses them)
+            self._fwd = {name: T.forecast_rows(sp.meta, self.horizon)
+                         for name, sp in {**self.splits, **{f"ood_{k}": v
+                                                            for k, v in self.ood.items()}}.items()}
+
+        # Every target here is deterministic given the stored windows, so all of it is
+        # precomputed once rather than rebuilt each epoch. Measured: without this, epochs run
+        # 101-118 s against Experiment 1's 58 s, and the two-stage protocol makes thirteen
+        # passes over the training split.
+        #
+        # The two targets are slow for different reasons and both are fixed by one sequential
+        # pass over each array:
+        #
+        # * ``correlation`` costs an einsum over (16, 200) per window.
+        # * the forecast targets need the *partner* window as well as the batch's own, which
+        #   doubles the random gathers against a 2.2 GB memmap -- and Experiment 1 was already
+        #   I/O-bound, not compute-bound. But the target is only ever ONE timestep of the
+        #   partner window, so caching the last sample of every row (188k x 16 float32 =
+        #   12 MB) turns the second gather into an in-memory lookup.
+        #
+        # A sequential pass is also far cheaper than the scattered reads it replaces.
+        self._cache: dict[int, np.ndarray] = {}
+        self.target_stats = (0.0, 1.0)
+        if cache:
+            self._build_cache()
+        if target == "correlation" and standardize_target:
+            self.target_stats = self._fit_target_stats()
+
+    # -- target construction --------------------------------------------------
+
+    def _build_cache(self, batch: int = 8192) -> None:
+        """Precompute this split's target ingredient, once, in one sequential pass.
+
+        For ``correlation`` the cached value *is* the target, one scalar per row. For the
+        forecast targets it is each row's **own** final sample across the wanted channels;
+        the target for row ``i`` is then that array indexed at ``forecast_rows[i]``, which
+        needs no disk access at all.
+        """
+        import time
+        t0 = time.perf_counter()
+        n_total = 0
+        for sp in (*self.splits.values(), *self.ood.values()):
+            n = len(sp)
+            if self.target == "correlation":
+                out = np.empty(n, dtype=np.float32)
+            else:
+                out = np.empty((n, len(self._channels_out)), dtype=np.float32)
+            for i in range(0, n, batch):
+                j = min(i + batch, n)
+                X = sp.take(np.arange(i, j, dtype=np.int64))
+                if self.target == "correlation":
+                    out[i:j] = self._T.summed_pairwise_corr(X, self.min_sd)
+                else:
+                    out[i:j] = X[:, self._channels_out, -1]
+            self._cache[id(sp)] = out
+            n_total += n
+        mb = sum(a.nbytes for a in self._cache.values()) / 1e6
+        print(f"  cached the {self.target} target for {n_total:,} windows "
+              f"in {time.perf_counter() - t0:.0f}s ({mb:.1f} MB)")
+
+    def _fit_target_stats(self, n: int = 40_000, seed: int = 0) -> tuple[float, float]:
+        """Mean and sd of the correlation target over a training sample.
+
+        The correlation target has a spread of roughly 2 in raw units against the gait-phase
+        target's 1, and the learning rate is inherited from Table IV rather than retuned.
+        Standardizing keeps the loss scale — and therefore the effective step size — comparable
+        to Experiment 1, so the two are trained under the same conditions. Statistics come from
+        the **training split only**, like the input scaler.
+        """
+        rng = np.random.default_rng(seed)
+        sp = self.splits["train"]
+        idx = np.sort(rng.choice(len(sp), min(n, len(sp)), replace=False))
+        t = self._raw_target(sp, idx, None)
+        return float(t.mean()), float(t.std() + 1e-8)
+
+    def _raw_target(self, sp, idx: np.ndarray, fwd: np.ndarray | None):
+        """Un-standardized target for rows ``idx`` of split ``sp``, as ``(n, n_targets)``."""
+        if self.target == "correlation":
+            hit = self._cache.get(id(sp))
+            if hit is not None:
+                return hit[idx][:, None]
+            return self._T.summed_pairwise_corr(sp.take(idx), self.min_sd)[:, None]
+        rows = fwd[idx]
+        ok = rows >= 0
+        out = np.zeros((len(idx), len(self._channels_out)), dtype=np.float32)
+        if not ok.any():
+            return out
+        hit = self._cache.get(id(sp))
+        if hit is not None:
+            # pure in-memory lookup -- no second pass over the 2.2 GB memmap
+            out[ok] = hit[rows[ok]]
+            return out
+        # uncached fallback: one sorted gather of the partner rows, then their final sample
+        out[ok] = sp.take(rows[ok])[:, self._channels_out, -1]
+        return out
+
+    def batch(self, sp, idx: np.ndarray, fwd: np.ndarray | None):
+        """``(x, y, mask)`` for rows ``idx`` — the unit every loader yields."""
+        x = torch.from_numpy(sp.take(idx))
+        y = self._raw_target(sp, idx, fwd)
+        if self.target == "correlation":
+            mu, sd = self.target_stats
+            y = (y - mu) / sd
+            mask = np.ones_like(y, dtype=np.float32)
+        else:
+            mask = np.repeat((fwd[idx] >= 0)[:, None], y.shape[1], axis=1).astype(np.float32)
+        return x, torch.from_numpy(y.astype(np.float32)), torch.from_numpy(mask)
+
+    # -- interface expected by training/ensemble.py and evaluation/ensemble.py -
+
+    def __repr__(self) -> str:
+        sizes = ", ".join(f"{s}={len(v):,}" for s, v in self.splits.items())
+        ood = ", ".join(f"ood_{s}={len(v):,}" for s, v in self.ood.items())
+        extra = "" if self.target == "correlation" else f", horizon={self.horizon}"
+        return (f"SyntheticEnsembleData(target={self.target!r}{extra}, n_targets="
+                f"{self.n_targets}, {sizes}, {ood}, shape={self.shape})")
+
+    @property
+    def n_targets(self) -> int:
+        return 1 if self.target == "correlation" else len(self._channels_out)
+
+    @property
+    def target_names(self) -> list[str]:
+        if self.target == "correlation":
+            return ["summed_pairwise_corr"]
+        return [self.channels[i] for i in self._channels_out]
+
+    def _fwd_for(self, name: str) -> np.ndarray | None:
+        return self._fwd.get(name) if self._fwd else None
+
+    def loader(self, split, indices=None, batch_size=None, shuffle=False,
+               drop_last=False, seed=None) -> DataLoader:
+        """A ``DataLoader`` yielding ``(x, y, mask)``, targets computed per batch."""
+        if isinstance(split, str):
+            sp, fwd = self.splits[split], self._fwd_for(split)
+        else:
+            sp = split
+            fwd = next((self._fwd_for(k) for k, v in
+                        {**self.splits, **{f"ood_{a}": b for a, b in self.ood.items()}}.items()
+                        if v is sp), None)
+        idx = (np.arange(len(sp), dtype=np.int64) if indices is None
+               else np.asarray(indices, dtype=np.int64))
+        bs = batch_size or self.batch_size
+        outer = self
+
+        class _Batched(Dataset):
+            def __len__(self) -> int:
+                return len(idx)
+
+            def __getitem__(self, batch: Sequence[int]):
+                return outer.batch(sp, idx[np.asarray(batch, dtype=np.int64)], fwd)
+
+        base = _Batched()
+        gen = torch.Generator().manual_seed(seed) if seed is not None else None
+        sampler = RandomSampler(base, generator=gen) if shuffle else SequentialSampler(base)
+        return DataLoader(base, sampler=BatchSampler(sampler, batch_size=bs, drop_last=drop_last),
+                          batch_size=None, collate_fn=lambda b: b, num_workers=0)
+
+    def ood_loader(self, split: str, batch_size=None) -> DataLoader:
+        """OOD windows, ``x`` only — Psi is the branch variance and needs no target."""
+        if split not in self.ood:
+            raise KeyError(f"no OOD data for {split!r} in {self.ood_root}")
+        sp = self.ood[split]
+        idx = np.arange(len(sp), dtype=np.int64)
+        bs = batch_size or self.batch_size
+
+        class _Batched(Dataset):
+            def __len__(self) -> int:
+                return len(idx)
+
+            def __getitem__(self, batch: Sequence[int]):
+                return torch.from_numpy(sp.take(idx[np.asarray(batch, dtype=np.int64)]))
+
+        base = _Batched()
+        return DataLoader(base, sampler=BatchSampler(SequentialSampler(base), batch_size=bs,
+                                                    drop_last=False),
+                          batch_size=None, collate_fn=lambda b: b, num_workers=0)
+
+    def loso_folds(self, split: str = "train") -> Iterator[tuple[str, np.ndarray, np.ndarray]]:
+        """Leave-one-subject-out folds, identical in form to Experiment 1's."""
+        sp = self.splits[split]
+        for s in sp.subjects:
+            yield s, sp.indices(exclude=[s]), sp.indices(subjects=[s])
+
+    @staticmethod
+    def masked_mse(pred: torch.Tensor, target: torch.Tensor,
+                   mask: torch.Tensor) -> torch.Tensor:
+        return ((pred - target) ** 2 * mask).sum() / mask.sum().clamp(min=1.0)

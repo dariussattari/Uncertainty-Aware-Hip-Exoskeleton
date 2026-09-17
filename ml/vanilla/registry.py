@@ -13,8 +13,8 @@ the registry does not import torch, sklearn and every model at once. That matter
 ``main.py --help``, and it means a half-finished model cannot break the CLI for the others.
 
 The four architectures of the paper's Table I: the gait-phase ensemble and the autoencoder are
-implemented, as is the GAN; the synthetic-target ensemble is declared but not yet built,
-and ``available()`` reports which is which rather than failing at import.
+implemented, as are the GAN and the three label-free ensembles of Experiments 4-6.
+``available()`` reports which is which rather than failing at import.
 """
 
 from __future__ import annotations
@@ -37,8 +37,13 @@ class ModelSpec:
     description: str
     default_run: str
     paper_row: str                      # which row of Table I this reproduces
-    data: Callable[[], Any] | None = None          # -> data class
-    config: Callable[[], Any] | None = None        # -> config dataclass
+    # Each field is called EXACTLY ONCE by load(). So `data` must return the data class or a
+    # builder for it -- not an instance -- and `config` must return the config class, not an
+    # instance. Passing the class directly works only because a class is itself callable, and
+    # would be resolved into an instance; the parameterised synthetic entries therefore wrap
+    # theirs in a lambda.
+    data: Callable[[], Any] | None = None          # -> data class or builder
+    config: Callable[[], Any] | None = None        # -> config dataclass (the class)
     train: Callable[[], Any] | None = None         # -> train_paper_protocol(data, cfg)
     evaluate: Callable[[], Any] | None = None      # -> evaluate(run, data, split, ...)
     figures: Callable[[], Any] | None = None       # -> run(out, split, batch_size, device, reuse)
@@ -156,6 +161,59 @@ def _gan_audit():
     return audit_gan
 
 
+# --- the three label-free ensembles (Experiments 4-6) -----------------------------
+# All reuse Experiment 1's architecture, two-stage protocol and evaluator; only the target
+# and the output head differ, so the accessors are parameterised rather than duplicated.
+
+def _syn_data(target: str):
+    from dataset import SyntheticEnsembleData
+    from targets import DEFAULT_HORIZON
+
+    def build(batch_size: int = 1024, horizon: int = DEFAULT_HORIZON, **kw):
+        return SyntheticEnsembleData(batch_size=batch_size, target=target,
+                                     horizon=horizon, **kw)
+    return build
+
+
+def _syn_config(target: str):
+    from training.synthetic import CONFIGS
+    return CONFIGS[target]
+
+
+def _syn_train():
+    from training.synthetic import train_paper_protocol
+    return train_paper_protocol
+
+
+def _syn_eval():
+    from evaluation.ensemble import evaluate_model
+    return evaluate_model
+
+
+def _syn_figures(target: str):
+    """The ensemble's figures, bound to this target's data and title.
+
+    Experiments 4-6 share Experiment 1's architecture and score, so the same figures apply.
+    They must NOT share its data: plots_ensemble defaults to EnsembleGaitPhase, whose arrays
+    load without error and whose state dict fits, so an unbound call would produce a complete
+    set of plausible and entirely wrong figures.
+    """
+    from evaluation.plots_ensemble import run
+    from training.synthetic import describe_target
+
+    builder, label = _syn_data(target), describe_target(target)
+
+    def figures(out, split="test", batch_size=1024, device=None, reuse=False):
+        return run(out=out, split=split, batch_size=batch_size, device=device, reuse=reuse,
+                   data_factory=builder, title=label)
+    return figures
+
+
+def _syn_audit(target: str):
+    from paper_spec import audit_synthetic
+    return lambda verbose=True: audit_synthetic(target, verbose)
+
+
 REGISTRY: dict[str, ModelSpec] = {
     "ensemble": ModelSpec(
         name="ensemble",
@@ -185,9 +243,44 @@ REGISTRY: dict[str, ModelSpec] = {
         description="Ensemble of 7 TCNs predicting summed pairwise channel correlations",
         default_run="ml/vanilla/runs/synthetic",
         paper_row="Ensemble Method (Synthetic Target) — F1 62.5",
-        notes=("not implemented yet",
+        data=lambda t="correlation": _syn_data(t), config=lambda t="correlation": _syn_config(t),
+        train=_syn_train, evaluate=_syn_eval, figures=lambda t="correlation": _syn_figures(t),
+        audit=lambda t="correlation": _syn_audit(t),
+        notes=("Experiment 4 -- the paper's own synthetic target",
                "label-free: the target is computed from the input window itself",
-               "reuses the ensemble architecture with one linear output instead of two tanh"),
+               "reuses Experiment 1's architecture with one linear output instead of two tanh",
+               "sd floor 0.01 on the correlation denominator; without it standing is a coin flip",
+               "screened in 05_synthetic_targets.ipynb: scale-invariant (rho -0.04) but easy "
+               "(linear probe R2 0.52) and participant-specific (R2 -1.68 across subjects)"),
+    ),
+    "forecast-angle": ModelSpec(
+        name="forecast-angle",
+        description="Ensemble of 7 TCNs predicting hip angle 200 ms ahead",
+        default_run="ml/vanilla/runs/forecast_angle",
+        paper_row="none — an extension beyond the paper's four architectures",
+        data=lambda t="forecast_angle": _syn_data(t), config=lambda t="forecast_angle": _syn_config(t),
+        train=_syn_train, evaluate=_syn_eval, figures=lambda t="forecast_angle": _syn_figures(t),
+        audit=lambda t="forecast_angle": _syn_audit(t),
+        notes=("Experiment 5 -- not in the paper",
+               "target is available at RUN TIME, unlike gait phase, so prediction error can "
+               "be measured online as a second axis (Krogh-Vedelsby)",
+               "horizon 40 samples (200 ms); at 5 ms a two-tap linear filter scores 0.99 "
+               "skill and every branch agrees everywhere",
+               "score is still branch variance -- prediction error alone scores AUROC 0.32"),
+    ),
+    "forecast-all": ModelSpec(
+        name="forecast-all",
+        description="Ensemble of 7 TCNs predicting all 16 channels 200 ms ahead",
+        default_run="ml/vanilla/runs/forecast_all",
+        paper_row="none — an extension beyond the paper's four architectures",
+        data=lambda t="forecast_all": _syn_data(t), config=lambda t="forecast_all": _syn_config(t),
+        train=_syn_train, evaluate=_syn_eval, figures=lambda t="forecast_all": _syn_figures(t),
+        audit=lambda t="forecast_all": _syn_audit(t),
+        notes=("Experiment 6 -- not in the paper; the ablation against forecast-angle is "
+               "output width, at an identical horizon",
+               "the hardest target of the three: aggregate baseline skill -0.36 against "
+               "forecast-angle's -0.12, because accelerometers are unpredictable even 50 ms out",
+               "per-channel variance also gives fault attribution -- which sensor tripped it"),
     ),
     "gan": ModelSpec(
         name="gan",

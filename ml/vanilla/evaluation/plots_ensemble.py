@@ -33,11 +33,35 @@ MODE_NAMES = {
     "SA": "stair ascent", "SD": "stair descent", "ST": "standing",
     "TR": "transitions",
 }
-# The paper's gait-phase ensemble, for reference. Its OOD set was genuinely non-cyclic
-# (sitting, jumping, lying down) and 80.1% of the test windows, so these are context, not
-# a like-for-like target.
-PAPER_REFERENCE = {"accuracy": 96.1, "precision": 93.0, "recall": 96.2,
-                   "f1": 90.3, "j_statistic": 92.3, "ece": 0.03, "brier": 0.03}
+# Table I rows, per target. The paper's OOD set was genuinely non-cyclic (sitting, jumping,
+# lying down) and 80.1% of its test windows, so these are context rather than like-for-like
+# targets -- but they must at least be the RIGHT row. Comparing the synthetic-target ensemble
+# against the gait-phase row understates it by 28 points of F1.
+PAPER_ROWS = {
+    "gait_phase": {"accuracy": 96.1, "precision": 93.0, "recall": 96.2,
+                   "f1": 90.3, "j_statistic": 92.3, "ece": 0.03, "brier": 0.03,
+                   "auroc": "0.993", "label": "paper (gait phase)", "epochs": 13},
+    # Only F1 is recorded here. The paper's other synthetic-target figures have NOT been
+    # read off Table I -- the PDF is not in this repo -- and a fabricated reference number in
+    # a thesis table is worse than an absent one. Fill these in from Table I before citing
+    # them; `None` renders as an em dash.
+    "correlation": {"accuracy": None, "precision": None, "recall": None,
+                    "f1": 62.5, "j_statistic": None, "ece": None, "brier": None,
+                    "auroc": "—", "label": "paper (synthetic target)", "epochs": None},
+}
+# Experiments 5 and 6 have no counterpart row in the paper at all.
+PAPER_ROWS["forecast_angle"] = {**{k: None for k in PAPER_ROWS["correlation"]},
+                                "label": "no paper row (extension)", "auroc": "—",
+                                "epochs": None}
+PAPER_ROWS["forecast_all"] = dict(PAPER_ROWS["forecast_angle"])
+PAPER_REFERENCE = PAPER_ROWS["gait_phase"]        # back-compat for direct importers
+
+
+def _fmt(v, pct=False, dp=1):
+    """Table cell for a reference value that may not exist."""
+    if v is None:
+        return "—"
+    return f"{v:.{dp}f}%" if pct else f"{v:.{dp}f}"
 
 
 def _save(fig, out_dir: Path, name: str) -> None:
@@ -180,24 +204,33 @@ def fig_training(run: Path, out_dir: Path):
     return fig
 
 
-def summary(res, modes, run: Path, folds: pd.DataFrame, split: str) -> str:
+def summary(res, modes, run: Path, folds: pd.DataFrame, split: str, title: str = "Vanilla gait-phase ensemble") -> str:
     m = res.metrics
     report = json.loads((run / "report.json").read_text())
+    tgt = report.get("target", "gait_phase")
+    ref = PAPER_ROWS.get(tgt, PAPER_ROWS["gait_phase"])
+    horizon = report.get("horizon") if tgt.startswith("forecast") else None
 
     lines = [
-        f"# Vanilla gait-phase ensemble — results ({split} split)", "",
+        f"# {title} — results ({split} split)", "",
+        (f"Target: `{tgt}`"
+         + (f" at a horizon of {horizon} samples "
+            f"({1000*horizon/200:.0f} ms)" if horizon else "")
+         + ("" if tgt == "gait_phase" else
+            ". Label-free: computed from the input window, so it is available at run time, "
+            "unlike gait phase.")), "",
         "## Headline", "",
-        "| metric | ours | paper (ankle) | comparable? |",
+        f"| metric | ours | {ref['label']} | comparable? |",
         "|---|---|---|---|",
-        f"| J-statistic | **{m['j_statistic']:.1f}** | {PAPER_REFERENCE['j_statistic']:.1f} | yes |",
-        f"| AUROC | **{m['auroc']:.3f}** | 0.993 | yes |",
-        f"| accuracy | {m['accuracy']:.1f}% | {PAPER_REFERENCE['accuracy']:.1f}% | no |",
-        f"| recall (OOD caught) | {m['recall']:.1f}% | {PAPER_REFERENCE['recall']:.1f}% | no |",
+        f"| J-statistic | **{m['j_statistic']:.1f}** | {_fmt(ref['j_statistic'])} | yes |",
+        f"| AUROC | **{m['auroc']:.3f}** | {ref['auroc']} | yes |",
+        f"| accuracy | {m['accuracy']:.1f}% | {_fmt(ref['accuracy'], pct=True)} | no |",
+        f"| recall (OOD caught) | {m['recall']:.1f}% | {_fmt(ref['recall'], pct=True)} | no |",
         f"| specificity (ID kept) | {m['specificity']:.1f}% | — | no |",
-        f"| precision | {m['precision']:.1f}% | {PAPER_REFERENCE['precision']:.1f}% | no |",
-        f"| F1 | {m['f1']:.1f}% | {PAPER_REFERENCE['f1']:.1f}% | no |",
-        f"| ECE | {m['ece']:.3f} | {PAPER_REFERENCE['ece']:.2f} | partly |",
-        f"| Brier | {m['brier']:.3f} | {PAPER_REFERENCE['brier']:.2f} | partly |",
+        f"| precision | {m['precision']:.1f}% | {_fmt(ref['precision'], pct=True)} | no |",
+        f"| F1 | {m['f1']:.1f}% | {_fmt(ref['f1'], pct=True)} | no |",
+        f"| ECE | {m['ece']:.3f} | {_fmt(ref['ece'], dp=2)} | partly |",
+        f"| Brier | {m['brier']:.3f} | {_fmt(ref['brier'], dp=2)} | partly |",
         "",
         f"Test set is **{m['pct_ood']:.1f}% OOD** against the paper's **80.1%**. Accuracy, "
         "precision and F1 all move with class balance, so only J-statistic and AUROC compare "
@@ -221,8 +254,10 @@ def summary(res, modes, run: Path, folds: pd.DataFrame, split: str) -> str:
         "", "## Training", "",
         f"- Stage 1: LOSO over {len(folds)} subjects, best epoch "
         f"{folds['best_epoch'].min()}–{folds['best_epoch'].max()} "
-        f"(mean {folds['best_epoch'].mean():.1f}) — the paper found 13 on ankle data.",
-        f"- Stage 2: retrained on all {len(folds)} subjects for "
+        f"(mean {folds['best_epoch'].mean():.1f})"
+        + (" — the paper found 13 on ankle data." if ref.get("epochs") else "."),
+        f"- Stage 2: retrained on all "
+        f"{report.get('config', {}).get('n_train_subjects') or 12} subjects for "
         f"{report['stage1']['n_epochs']} epochs.",
         f"- Threshold: {res.threshold:.3e} (99.5th percentile of training Psi).",
         f"- Held-out validation masked MSE: {report['val_loss']:.5f}.",
@@ -237,8 +272,15 @@ def summary(res, modes, run: Path, folds: pd.DataFrame, split: str) -> str:
 
 
 def run(out: str = "ml/vanilla/runs/paper", split: str = "test",
-        batch_size: int = 1024, device=None, reuse: bool = False) -> int:
+        batch_size: int = 1024, device=None, reuse: bool = False,
+        data_factory=None, title: str = "Vanilla gait-phase ensemble") -> int:
     """Generate every figure. Callable directly, so main.py needs no argv juggling.
+
+    ``data_factory`` exists because Experiments 4-6 share this module: they are the same
+    architecture and the same score, so the same figures apply, but they read a different
+    directory and have a different number of outputs. Defaulting it to ``EnsembleGaitPhase``
+    rather than requiring it would silently load Experiment 1's data for them — the arrays load
+    fine and the state dict fits, so nothing would raise and every number would be wrong.
 
     ``batch_size``/``device``/``reuse`` are accepted for interface parity with the other
     models even though this one does not currently use them.
@@ -247,8 +289,8 @@ def run(out: str = "ml/vanilla/runs/paper", split: str = "test",
     if not (run_dir / "final.pt").exists():
         raise SystemExit(f"no trained model at {run_dir / 'final.pt'}")
 
-    data = EnsembleGaitPhase(batch_size=batch_size)
-    print(f"scoring {split}...")
+    data = (data_factory or EnsembleGaitPhase)(batch_size=batch_size)
+    print(f"{title}: scoring {split}...")
     res, modes, subjects = collect(run_dir, split, data)
 
     fig_dir = run_dir / "figures"
@@ -259,7 +301,7 @@ def run(out: str = "ml/vanilla/runs/paper", split: str = "test",
     _, folds = fig_loso(run_dir, fig_dir)
     fig_training(run_dir, fig_dir)
 
-    text = summary(res, modes, run_dir, folds, split)
+    text = summary(res, modes, run_dir, folds, split, title)
     (run_dir / "summary.md").write_text(text)
     print(f"\nwrote {run_dir / 'summary.md'}\n")
     print(text)

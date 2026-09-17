@@ -19,6 +19,11 @@ Categories
 ``choice``
     Ours, deliberately. These are the ones worth arguing about — each needs a reason that
     survives a committee asking "why didn't you just do what the paper did?"
+``extension``
+    Not a deviation at all: a deliberate departure into territory the paper does not cover.
+    Used only by Experiments 5 and 6, which have no counterpart row in Table I. Listed here so
+    that the difference between "we could not match the paper" and "we went further than the
+    paper" is explicit rather than left to the reader.
 """
 
 from __future__ import annotations
@@ -32,7 +37,8 @@ from dataset import repo_root
 
 __all__ = ["PAPER", "DEVIATIONS", "observed", "audit",
            "PAPER_AE", "DEVIATIONS_AE", "observed_ae", "audit_ae",
-           "PAPER_GAN", "DEVIATIONS_GAN", "observed_gan", "audit_gan"]
+           "PAPER_GAN", "DEVIATIONS_GAN", "observed_gan", "audit_gan",
+           "PAPER_SYN", "DEVIATIONS_SYN", "observed_synthetic", "audit_synthetic"]
 
 
 # --- Table IV, "COMPLETE SPECIFICATIONS FOR ALL ANOMALY DETECTION MODELS" ----------
@@ -476,12 +482,181 @@ def audit_gan(verbose: bool = True) -> list[str]:
     return undeclared
 
 
+# ============================ Label-free ensembles ============================
+# Table IV, "Ensemble Models" + "Ensemble: Synthetic Target Model".
+#
+# Experiment 4 reproduces the paper's row. Experiments 5 and 6 are extensions with no
+# counterpart in the paper, so for them the architecture rows are still audited against
+# Table IV -- they inherit it unchanged -- while the target itself is recorded as an
+# extension rather than a deviation.
+
+PAPER_SYN: dict[str, object] = {
+    "window_samples": 175,
+    "sample_rate_hz": 175,
+    "n_channels": 16,
+    "stride": 10,
+    "n_members": 7,
+    "n_layers": 3,
+    "n_filters": 30,
+    "kernel_size": 20,
+    "norm": "BatchNorm1d",
+    "activation": "ReLU",
+    "output_activation": "linear",       # a single unbounded scalar, unlike the tanh heads
+    "n_targets": 1,                      # "sum of pairwise correlations" -- one value
+    "target": "summed pairwise correlation",
+    "batch_size": 1024,
+    "lr": 1e-3,
+    "optimizer": "Adam",
+    "loss": "MSE",
+    "patience": 10,
+    "strategy": "two-stage LOSO",
+    "scoring": "variance across branches",
+    "threshold_percentile": 99.5,
+    "dilations": None,                   # not stated
+}
+
+_SHARED_SYN = (
+    Deviation("sample_rate_hz", "forced",
+              "The Molinaro dataset is recorded at 200 Hz; the ankle data was 175 Hz."),
+    Deviation("window_samples", "forced",
+              "200 samples at 200 Hz preserves the paper's 1-second window, as in every "
+              "other experiment. Duration is what is held constant."),
+    Deviation("dilations", "unspecified",
+              "Table IV gives 3 layers of kernel 20 but no dilation factors. (1, 2, 8) gives "
+              "a receptive field of 210 samples, covering the whole window; conventional "
+              "doubling (1, 2, 4) would reach only 134 and leave the first third unreachable. "
+              "Identical to Experiment 1, deliberately -- these experiments change the target "
+              "and nothing else."),
+)
+
+DEVIATIONS_SYN: dict[str, tuple[Deviation, ...]] = {
+    "correlation": _SHARED_SYN + (
+        Deviation("target", "choice",
+                  "A standard-deviation floor of 0.01 is applied to the correlation "
+                  "denominator. Pearson correlation divides by the product of two channel "
+                  "standard deviations, and standing has 89% of its channels below that floor "
+                  "in standardized units -- unfloored, its target is the correlation of sensor "
+                  "noise, a different random value every window. Flooring shrinks such pairs "
+                  "smoothly toward zero rather than introducing a discontinuity, and leaves "
+                  "every non-degenerate task bit-identical. Measured in "
+                  "05_synthetic_targets.ipynb: the target's spread within standing halves, "
+                  "and no other mode moves at any floor tested."),
+        Deviation("n_targets", "choice",
+                  "The target is additionally standardized using training-split statistics. "
+                  "Its raw spread is roughly twice the gait-phase target's, and the learning "
+                  "rate is inherited from Table IV rather than retuned, so standardizing "
+                  "keeps the effective step size comparable to Experiment 1's. This is "
+                  "reported under n_targets only because the paper states no target scaling "
+                  "either way."),
+    ),
+    "forecast_angle": _SHARED_SYN + (
+        Deviation("target", "extension",
+                  "Not the paper's target. Hip angle for both legs, 40 samples (200 ms) after "
+                  "the window ends. The motivation is that gait phase is recovered from force "
+                  "plates offline and does not exist at run time, so the paper can only ever "
+                  "measure branch disagreement; a future sensor value is available live, which "
+                  "makes prediction error measurable online as a second axis. The horizon is "
+                  "not free: a two-tap linear filter predicts hip angle 5 ms ahead with 0.99 "
+                  "skill and 50 ms ahead with 0.83, so at short horizons every branch learns "
+                  "the same extrapolator and the variance collapses. Skill crosses zero near "
+                  "40 samples."),
+        Deviation("n_targets", "extension",
+                  "Two outputs rather than one -- left and right hip angle."),
+    ),
+    "forecast_all": _SHARED_SYN + (
+        Deviation("target", "extension",
+                  "Not the paper's target. All sixteen channels at the same 200 ms horizon. "
+                  "Differs from forecast_angle only in output width, which makes the pair a "
+                  "clean ablation. It is the harder target of the two -- aggregate baseline "
+                  "skill -0.36 against -0.12 -- because accelerometers are unpredictable even "
+                  "50 ms out while the encoders are smooth, and harder targets produce more "
+                  "branch disagreement. Per-channel variance additionally gives fault "
+                  "attribution."),
+        Deviation("n_targets", "extension",
+                  "Sixteen outputs rather than one -- the full sensor state."),
+    ),
+}
+
+
+def observed_synthetic(target: str = "correlation") -> dict[str, object]:
+    """What one of the label-free ensembles is actually configured to do right now."""
+    import models.ensemble as m
+    from dataset import SyntheticEnsembleData
+    from training.synthetic import CONFIGS
+
+    cfg = CONFIGS[target]()
+    net = m.create_ensemble(16, 1, activation="linear")
+    member = net.members[0]
+    data = SyntheticEnsembleData(batch_size=cfg.batch_size, target=target,
+                                 horizon=cfg.horizon)
+    names = {"correlation": "summed pairwise correlation",
+             "forecast_angle": f"hip angle at +{cfg.horizon} samples",
+             "forecast_all": f"all 16 channels at +{cfg.horizon} samples"}
+    return {
+        "window_samples": 200, "sample_rate_hz": 200, "n_channels": 16, "stride": 10,
+        "n_members": cfg.n_members, "n_layers": len(member.dilations),
+        "n_filters": m.N_FILTERS, "kernel_size": member.kernel_size,
+        "norm": "BatchNorm1d", "activation": "ReLU",
+        "output_activation": member.activation,
+        "n_targets": data.n_targets, "target": names[target],
+        "batch_size": cfg.batch_size, "lr": cfg.lr, "optimizer": "Adam", "loss": "MSE",
+        "patience": cfg.patience, "strategy": "two-stage LOSO",
+        "scoring": "variance across branches",
+        "threshold_percentile": cfg.threshold_percentile,
+        "dilations": member.dilations,
+    }
+
+
+def audit_synthetic(target: str = "correlation", verbose: bool = True) -> list[str]:
+    """Compare one label-free ensemble against Table IV. Returns undeclared mismatches."""
+    obs = observed_synthetic(target)
+    by_key = {d.key: d for d in DEVIATIONS_SYN[target]}
+    matches, declared, undeclared = [], [], []
+    for key, want in PAPER_SYN.items():
+        got = obs.get(key)
+        if want == got:
+            matches.append(key)
+        elif key in by_key:
+            declared.append(key)
+        else:
+            undeclared.append(key)
+
+    if verbose:
+        from training.synthetic import describe_target
+        print(f"{describe_target(target)}")
+        print(f"Fidelity audit against Table IV -- {len(PAPER_SYN)} parameters\n")
+        print(f"  matches the paper exactly ({len(matches)}):")
+        for k in matches:
+            print(f"    {k:22s} {PAPER_SYN[k]}")
+        print(f"\n  declared deviations ({len(declared)}):")
+        for k in declared:
+            d = by_key[k]
+            print(f"    [{d.category:12s}] {k:22s} paper={PAPER_SYN[k]!r}  ours={obs[k]!r}")
+            for line in _wrap(d.reason, 84):
+                print(f"                     {line}")
+        if undeclared:
+            print(f"\n  UNDECLARED deviations ({len(undeclared)}) -- need a reason or a fix:")
+            for k in undeclared:
+                print(f"    {k:22s} paper={PAPER_SYN[k]!r}  ours={obs[k]!r}")
+        else:
+            print("\n  no undeclared deviations")
+        cats = ("forced", "unspecified", "choice", "extension")
+        by_cat = {c: sum(1 for d in DEVIATIONS_SYN[target]
+                         if d.category == c and d.key in declared) for c in cats}
+        print(f"\n  summary: {len(matches)} exact, "
+              + ", ".join(f"{v} {k}" for k, v in by_cat.items() if v)
+              + (f", {len(undeclared)} UNDECLARED" if undeclared else ""))
+    return undeclared
+
+
 if __name__ == "__main__":
     import sys
 
     bad = audit()
-    print("\n" + "=" * 78 + "\n")
-    bad += audit_ae()
-    print("\n" + "=" * 78 + "\n")
-    bad += audit_gan()
+    for fn in (audit_ae, audit_gan):
+        print("\n" + "=" * 78 + "\n")
+        bad += fn()
+    for tgt in ("correlation", "forecast_angle", "forecast_all"):
+        print("\n" + "=" * 78 + "\n")
+        bad += audit_synthetic(tgt)
     sys.exit(1 if bad else 0)

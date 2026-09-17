@@ -97,8 +97,12 @@ class TCNEnsembleMember(nn.Module):
     def __init__(self, input_dim: int, output_dim: int = 2,
                  num_channels: tuple[int, ...] = (N_FILTERS,) * N_LAYERS,
                  kernel_size: int = KERNEL_SIZE,
-                 dilations: tuple[int, ...] = DILATIONS):
+                 dilations: tuple[int, ...] = DILATIONS,
+                 activation: str = "tanh"):
         super().__init__()
+        if activation not in ("tanh", "linear"):
+            raise ValueError(f"activation must be 'tanh' or 'linear', got {activation!r}")
+        self.activation = activation
         if len(dilations) != len(num_channels):
             raise ValueError(
                 f"need one dilation per layer: {len(num_channels)} layers, {len(dilations)} dilations"
@@ -121,8 +125,11 @@ class TCNEnsembleMember(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # x is (batch, in_channels, seq_len)
         features = self.network(x)
-        # tanh matches the sin(gait phase) target range of [-1, 1]
-        return torch.tanh(self.fc(features[:, :, -1]))
+        out = self.fc(features[:, :, -1])
+        # tanh matches the sin(gait phase) target range of [-1, 1]. The synthetic targets of
+        # Experiments 4-6 are standardized and unbounded, so they take a linear head -- a tanh
+        # there would saturate and clip the tails, which are exactly the informative windows.
+        return torch.tanh(out) if self.activation == "tanh" else out
 
 
 class GaitPhaseEnsemble(nn.Module):
@@ -140,6 +147,7 @@ class GaitPhaseEnsemble(nn.Module):
         self.members = nn.ModuleList(
             TCNEnsembleMember(input_dim, output_dim, **kwargs) for _ in range(num_models)
         )
+        self.output_dim = output_dim
 
     def __len__(self) -> int:
         return len(self.members)
@@ -179,7 +187,11 @@ class GaitPhaseEnsemble(nn.Module):
 
 
 def create_ensemble(input_dim: int, output_dim: int = 2, num_models: int = N_MEMBERS, **kwargs):
-    """Build the ensemble. Diversity comes from each branch's random initialisation."""
+    """Build the ensemble. Diversity comes from each branch's random initialisation.
+
+    ``activation="linear"`` swaps the tanh head for an identity one, which is what the
+    synthetic targets of Experiments 4-6 need; everything else is shared with Experiment 1.
+    """
     return GaitPhaseEnsemble(input_dim, output_dim, num_models, **kwargs)
 
 

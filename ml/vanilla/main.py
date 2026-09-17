@@ -7,6 +7,7 @@
     python main.py eval    --model ensemble
     python main.py figures --model autoencoder
     python main.py all     --model autoencoder         # train, eval, figures
+    python main.py ambiguity --model forecast-angle    # A/E decomposition (forecast only)
 
 ``--model`` is required and explicit; there is no default, because silently training the wrong
 architecture is expensive. ``registry.py`` maps the name to its model, trainer, evaluator and
@@ -70,6 +71,20 @@ def _make_config(parts, **overrides):
     return cls(**{k: v for k, v in overrides.items() if k in valid and v is not None})
 
 
+def _build_data(args, parts):
+    """Build the model's data object, passing only the flags its builder accepts."""
+    kw = {"batch_size": _batch_size(args, parts)}
+    h = getattr(args, "horizon", None)
+    if h is not None:
+        import inspect
+        try:
+            if "horizon" in inspect.signature(parts["data"]).parameters:
+                kw["horizon"] = h
+        except (TypeError, ValueError):
+            pass
+    return parts["data"](**kw)
+
+
 def _batch_size(args, parts) -> int:
     """``--batch-size`` if given, else the model's own Table IV value.
 
@@ -94,10 +109,10 @@ def cmd_audit(args) -> int:
 def cmd_train(args) -> int:
     spec, parts = _spec_and_parts(args)
     bs = _batch_size(args, parts)
-    data = parts["data"](batch_size=bs)
+    data = _build_data(args, parts)
     print(data)
     run = _run_dir(args, spec)
-    cfg = _make_config(parts, lr=args.lr, batch_size=bs,
+    cfg = _make_config(parts, lr=args.lr, batch_size=bs, horizon=getattr(args, "horizon", None),
                        max_epochs=args.max_epochs, patience=args.patience,
                        seed=args.seed, device=args.device, out_dir=str(run),
                        loso_folds=getattr(args, "folds", None))
@@ -124,13 +139,13 @@ def cmd_eval(args) -> int:
     # autoencoder also needs its fitted LOF). All are normalised into one result schema below,
     # so downstream consumers and the cross-model comparison do not have to branch on which
     # model produced a file.
-    if spec.name == "ensemble":
+    if spec.name in ("ensemble", "synthetic", "forecast-angle", "forecast-all"):
         from evaluation.ensemble import load_checkpoint
         from training.ensemble import fit_threshold
         model, threshold = load_checkpoint(run / "final.pt", data, device=device)
         if not np.isfinite(threshold):
             print("checkpoint has no threshold; recalibrating from training data")
-            threshold, _ = fit_threshold(model, data)
+            threshold, _ = fit_threshold(model, data, device=device)
         res = parts["evaluate"](model, data, threshold, split=args.split, device=device,
                                 batch_size=bs, filter_kind=args.filter,
                                 filter_scores=args.filter_scores)
@@ -185,15 +200,29 @@ def cmd_figures(args) -> int:
                             device=args.device, reuse=getattr(args, "reuse", False))
 
 
+def cmd_ambiguity(args) -> int:
+    """Krogh-Vedelsby decomposition — forecast models only.
+
+    Separate from `eval` because it needs a run-time target. Only the forecast experiments
+    have one: gait phase comes from force plates offline and the correlation target has no
+    future ground truth to be wrong about, so for those there is no E to compute.
+    """
+    from evaluation.ambiguity import run as kv_run
+    spec, parts = _spec_and_parts(args)
+    return kv_run(model=spec.name, out=getattr(args, "out", None), split=args.split,
+                  batch_size=_batch_size(args, parts), device=args.device)
+
+
 def cmd_smoke(args) -> int:
     """Cheap end-to-end check. Proves the wiring, not the science."""
     spec, parts = _spec_and_parts(args)
     bs = _batch_size(args, parts)
-    data = parts["data"](batch_size=bs)
+    data = _build_data(args, parts)
     print(data)
     run = resolve_out(f"ml/vanilla/runs/{spec.name}_smoke")
     cfg = _make_config(parts, max_epochs=2, patience=1, device=args.device,
                        batch_size=bs, out_dir=str(run),
+                       horizon=getattr(args, "horizon", None),
                        loso_folds=2, lof_fit_samples=5_000,
                        checkpoint_every=1, monitor_windows=1_024)
     print(f"\nsmoke: {spec.name} on {pick_device(args.device)} -> {run}\n")
@@ -227,6 +256,9 @@ def build_parser() -> argparse.ArgumentParser:
         sp.add_argument("--max-epochs", type=int, default=None)
         sp.add_argument("--patience", type=int, default=None)
         sp.add_argument("--folds", type=int, default=None, help="ensemble only: limit LOSO folds")
+        sp.add_argument("--horizon", type=int, default=None,
+                        help="forecast models only: samples ahead to predict "
+                             "(default 40 = 200 ms; must be a multiple of the stride, 10)")
         sp.add_argument("--seed", type=int, default=0)
         return sp
 
@@ -242,6 +274,10 @@ def build_parser() -> argparse.ArgumentParser:
     add_common(sub.add_parser("smoke", help="quick wiring check")).set_defaults(fn=cmd_smoke)
     add_train_flags(add_common(sub.add_parser("train", help="run the training protocol"))).set_defaults(fn=cmd_train)
     add_eval_flags(add_common(sub.add_parser("eval", help="evaluate a checkpoint"))).set_defaults(fn=cmd_eval)
+
+    kv = add_eval_flags(add_common(sub.add_parser(
+        "ambiguity", help="Krogh-Vedelsby A/E decomposition (forecast models only)")))
+    kv.set_defaults(fn=cmd_ambiguity)
 
     f = add_eval_flags(add_common(sub.add_parser("figures", help="regenerate figures")))
     f.add_argument("--reuse", action="store_true", help="redraw without re-evaluating")

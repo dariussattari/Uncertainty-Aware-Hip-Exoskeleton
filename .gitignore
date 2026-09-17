@@ -229,3 +229,6 @@ data/processed/
 
 # Local arm64 virtualenv (torch + MPS)
 .venv/
+
+research_updates/
+.docx

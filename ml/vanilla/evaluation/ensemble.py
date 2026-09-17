@@ -172,11 +172,21 @@ def evaluate_model(
     return EvalResult(metrics, per_mode, threshold, steepness, score, label)
 
 
-def load_checkpoint(path: Path | str, data: EnsembleGaitPhase, device=None):
-    """Rebuild the model from a ``train.py`` checkpoint. Returns ``(model, threshold)``."""
+def load_checkpoint(path: Path | str, data: EnsembleGaitPhase, device=None,
+                    activation: str | None = None):
+    """Rebuild the model from a checkpoint. Returns ``(model, threshold)``.
+
+    The output head has to match what was trained or ``load_state_dict`` succeeds and the
+    predictions are silently wrong: Experiment 1 uses tanh for ``sin(gait phase)``, while the
+    label-free ensembles of Experiments 4-6 use a linear head for their standardized targets.
+    Both have identical parameter shapes, so nothing would complain. It is inferred from the
+    data object, which already knows its target, and can be overridden explicitly.
+    """
     device = device or pick_device()
     ckpt = torch.load(path, map_location=device, weights_only=False)
-    model = create_ensemble(data.n_channels, data.n_targets)
+    if activation is None:
+        activation = "linear" if getattr(data, "target", None) else "tanh"
+    model = create_ensemble(data.n_channels, data.n_targets, activation=activation)
     model.load_state_dict(ckpt["model"])
     return model.to(device), float(ckpt.get("threshold", float("nan")))
 
