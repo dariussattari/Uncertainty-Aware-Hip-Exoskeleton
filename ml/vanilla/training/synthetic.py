@@ -14,11 +14,14 @@ reference work's best estimator cannot be run live. Every target here is computa
 sixteen sensor channels alone.
 
 **Score.** The uncertainty score stays the branch variance, identical in definition to
-Experiment 1, so all six models sit on one comparison table under one threshold rule. Realised
-prediction error is *not* the score. Measured on these targets it reaches AUROC 0.32 — below
-chance, anti-correlated with novelty, matching the autoencoder's reconstruction error at 0.312
-— because standing is the easiest task to predict and the most out-of-distribution. Prediction
-error ranks windows by signal complexity, not by novelty.
+Experiment 1, so all six models sit on one comparison table under one threshold rule. That
+choice is about comparability, not about realised prediction error being useless: measured on
+Experiment 5's trained checkpoint, the ensemble's error reaches AUROC 0.867 against the
+variance's 0.893 (see ``evaluation/ambiguity.py``). An earlier version of this docstring claimed
+error would score ~0.32; that figure came from a linear-extrapolation *baseline*, which has no
+training distribution to be unfamiliar with, and it did not survive contact with a trained
+model. Error is nonetheless unusable as the primary score here for a different reason: it needs
+the target, so it arrives ``horizon`` samples late.
 
 Training records nothing but the branch variance. The realised error and the Krogh-Vedelsby
 decomposition are computed **after** training by ``evaluation/ambiguity.py``, which needs only

@@ -1,0 +1,207 @@
+{
+  "config": {
+    "lr": 0.001,
+    "batch_size": 1024,
+    "max_epochs": 60,
+    "patience": 10,
+    "seed": 0,
+    "device": null,
+    "threshold_percentile": 99.5,
+    "n_members": 7,
+    "out_dir": "/Users/dariussattari/Documents/thesis/Uncertainty-Aware-Hip-Exoskeleton/ml/vanilla/runs/forecast_angle",
+    "loso_folds": null,
+    "target": "forecast_angle",
+    "horizon": 40
+  },
+  "target": "forecast_angle",
+  "target_names": [
+    "enc_angle_l",
+    "enc_angle_r"
+  ],
+  "horizon": 40,
+  "stage1": {
+    "n_epochs": 20,
+    "folds": [
+      {
+        "subject": "AB15",
+        "best_epoch": 16,
+        "val_loss": 0.04183620243417581,
+        "epochs_run": 27
+      },
+      {
+        "subject": "AB17",
+        "best_epoch": 36,
+        "val_loss": 0.031002520036888078,
+        "epochs_run": 47
+      },
+      {
+        "subject": "AB18",
+        "best_epoch": 27,
+        "val_loss": 0.06826337822878871,
+        "epochs_run": 38
+      },
+      {
+        "subject": "AB19",
+        "best_epoch": 13,
+        "val_loss": 0.04212190439469284,
+        "epochs_run": 24
+      },
+      {
+        "subject": "AB21",
+        "best_epoch": 17,
+        "val_loss": 0.040528478755976136,
+        "epochs_run": 28
+      },
+      {
+        "subject": "AB23",
+        "best_epoch": 4,
+        "val_loss": 0.03962630999666518,
+        "epochs_run": 15
+      },
+      {
+        "subject": "AB25",
+        "best_epoch": 16,
+        "val_loss": 0.06195030214603799,
+        "epochs_run": 27
+      },
+      {
+        "subject": "AB26",
+        "best_epoch": 35,
+        "val_loss": 0.02541939082247268,
+        "epochs_run": 46
+      },
+      {
+        "subject": "AB27",
+        "best_epoch": 27,
+        "val_loss": 0.03681887421128386,
+        "epochs_run": 38
+      },
+      {
+        "subject": "AB28",
+        "best_epoch": 6,
+        "val_loss": 0.0669949182588224,
+        "epochs_run": 17
+      },
+      {
+        "subject": "AB31",
+        "best_epoch": 29,
+        "val_loss": 0.03201527208404239,
+        "epochs_run": 40
+      },
+      {
+        "subject": "AB34",
+        "best_epoch": 13,
+        "val_loss": 0.047284216647928846,
+        "epochs_run": 24
+      }
+    ]
+  },
+  "stage2_history": [
+    {
+      "epoch": 0,
+      "train_loss": 0.07944154484785597,
+      "seconds": 119.7
+    },
+    {
+      "epoch": 1,
+      "train_loss": 0.03691343161397607,
+      "seconds": 119.7
+    },
+    {
+      "epoch": 2,
+      "train_loss": 0.030971170548715565,
+      "seconds": 119.5
+    },
+    {
+      "epoch": 3,
+      "train_loss": 0.02836234633713084,
+      "seconds": 122.2
+    },
+    {
+      "epoch": 4,
+      "train_loss": 0.026118119776184442,
+      "seconds": 122.8
+    },
+    {
+      "epoch": 5,
+      "train_loss": 0.02477473276640518,
+      "seconds": 120.0
+    },
+    {
+      "epoch": 6,
+      "train_loss": 0.023682804016382425,
+      "seconds": 121.8
+    },
+    {
+      "epoch": 7,
+      "train_loss": 0.022723813887465947,
+      "seconds": 120.0
+    },
+    {
+      "epoch": 8,
+      "train_loss": 0.022132991359207287,
+      "seconds": 119.9
+    },
+    {
+      "epoch": 9,
+      "train_loss": 0.021738463178745174,
+      "seconds": 120.5
+    },
+    {
+      "epoch": 10,
+      "train_loss": 0.021070327747523095,
+      "seconds": 120.3
+    },
+    {
+      "epoch": 11,
+      "train_loss": 0.020765372665385626,
+      "seconds": 123.2
+    },
+    {
+      "epoch": 12,
+      "train_loss": 0.020454547789631787,
+      "seconds": 120.1
+    },
+    {
+      "epoch": 13,
+      "train_loss": 0.019907665724281036,
+      "seconds": 121.6
+    },
+    {
+      "epoch": 14,
+      "train_loss": 0.01964657428203176,
+      "seconds": 121.7
+    },
+    {
+      "epoch": 15,
+      "train_loss": 0.019517087418137367,
+      "seconds": 119.6
+    },
+    {
+      "epoch": 16,
+      "train_loss": 0.019131770814220423,
+      "seconds": 120.1
+    },
+    {
+      "epoch": 17,
+      "train_loss": 0.018821121812870597,
+      "seconds": 119.9
+    },
+    {
+      "epoch": 18,
+      "train_loss": 0.0186850875209433,
+      "seconds": 119.5
+    },
+    {
+      "epoch": 19,
+      "train_loss": 0.018437303623211835,
+      "seconds": 119.9
+    }
+  ],
+  "threshold": 0.010145580396056175,
+  "val_loss": 0.04100886130245098,
+  "psi_train": {
+    "median": 0.002843402326107025,
+    "mean": 0.0032039072830229998
+  }
+}

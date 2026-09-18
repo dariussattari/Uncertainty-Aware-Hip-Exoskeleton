@@ -1,0 +1,74 @@
+[
+  {
+    "subject": "AB15",
+    "best_epoch": 4,
+    "val_loss": 0.11795723897737183,
+    "epochs_run": 15
+  },
+  {
+    "subject": "AB17",
+    "best_epoch": 40,
+    "val_loss": 0.043923381821694946,
+    "epochs_run": 51
+  },
+  {
+    "subject": "AB18",
+    "best_epoch": 12,
+    "val_loss": 0.09291794480443283,
+    "epochs_run": 23
+  },
+  {
+    "subject": "AB19",
+    "best_epoch": 7,
+    "val_loss": 0.06142094293491164,
+    "epochs_run": 18
+  },
+  {
+    "subject": "AB21",
+    "best_epoch": 43,
+    "val_loss": 0.03701972635550575,
+    "epochs_run": 54
+  },
+  {
+    "subject": "AB23",
+    "best_epoch": 42,
+    "val_loss": 0.04358719931037846,
+    "epochs_run": 53
+  },
+  {
+    "subject": "AB25",
+    "best_epoch": 39,
+    "val_loss": 0.09565745798182668,
+    "epochs_run": 50
+  },
+  {
+    "subject": "AB26",
+    "best_epoch": 16,
+    "val_loss": 0.05443808801968537,
+    "epochs_run": 27
+  },
+  {
+    "subject": "AB27",
+    "best_epoch": 25,
+    "val_loss": 0.06059689062179333,
+    "epochs_run": 36
+  },
+  {
+    "subject": "AB28",
+    "best_epoch": 19,
+    "val_loss": 0.0782073933091746,
+    "epochs_run": 30
+  },
+  {
+    "subject": "AB31",
+    "best_epoch": 20,
+    "val_loss": 0.03980415117295738,
+    "epochs_run": 31
+  },
+  {
+    "subject": "AB34",
+    "best_epoch": 22,
+    "val_loss": 0.07619310785695912,
+    "epochs_run": 33
+  }
+]

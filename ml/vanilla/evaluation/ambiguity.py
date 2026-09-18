@@ -1,4 +1,4 @@
-"""Krogh-Vedelsby decomposition — the axis gait phase could never provide.
+r"""Krogh-Vedelsby decomposition — the axis gait phase could never provide.
 
     python ml/vanilla/evaluation/ambiguity.py --model forecast-angle
     python ml/vanilla/evaluation/ambiguity.py --model forecast-all --split test
@@ -22,12 +22,27 @@ For an ensemble combined by uniform averaging under squared-error loss, the deco
 floating-point noise means the masking or the averaging is wrong, so it doubles as a
 correctness check on this module and on the target construction.
 
-**What the two axes buy, and what they do not.** ``A`` is the detector. ``E`` is *not*: measured
-on these targets it reaches AUROC 0.31 — below chance, anti-correlated with novelty — for the
-same reason the autoencoder's reconstruction error scored 0.312. Standing is the easiest task
-to predict and the most out-of-distribution, so error ranks windows by signal complexity rather
-than by novelty. Reporting ``E`` as a detector would repeat a mistake this project has already
-made three times.
+**What the two axes buy.** ``A`` is the primary detector (AUROC 0.893 on Experiment 5). ``E``
+turns out to be a *near-equal* detector (0.867), which contradicts what this docstring
+previously claimed and is worth recording because the error was instructive.
+
+The screening notebook predicted ``E`` would score ~0.31 — anti-correlated, the same failure as
+the autoencoder's reconstruction error at 0.312. That prediction came from a **linear-
+extrapolation baseline's** error, and a baseline has no training distribution to be unfamiliar
+with, so its error can only rank windows by signal complexity: standing is nearly constant, so
+it came out *easiest* and the score inverted. A **trained** ensemble's error behaves differently
+because it has a manifold to fall off. Measured per-task median ``E`` on Experiment 5:
+
+    LG 0.018  RA 0.019  RD 0.020  |  ST 0.038  TR 0.039  SA 0.072  SD 0.075
+    \_____ the three trained-on tasks _____/    \_____ the four held-out tasks _____/
+
+The three in-distribution tasks are the three lowest, cleanly separated from the four held-out
+ones — the opposite ordering to the baseline's, and standing has moved from easiest to fourth.
+The lesson generalises: an untrained baseline is the wrong instrument for predicting whether a
+*trained* model's error will track novelty.
+
+``E`` is still not a drop-in replacement for ``A``: it needs the target, so it is only available
+``horizon`` samples late (200 ms here), where ``A`` is available immediately.
 
 Its value is the **joint** reading, which a scalar score cannot express:
 
@@ -43,10 +58,12 @@ The low-A/high-E quadrant is the one worth having. It is unreachable from disagr
 and it is the distinction a controller actually needs: novel terrain calls for reduced
 assistance, a failing sensor calls for shutdown.
 
-Also reported is ``A / (E + eps)`` — disagreement relative to task difficulty. All three of the
-dead ends in this project (the GAN's score, reconstruction error, prediction error) collapsed to
-a measure of signal magnitude, and dividing by the realised difficulty is the natural way to
-quotient that out. It is screened against the plain scores rather than assumed to help.
+Also reported is ``A / (E + eps)`` — disagreement relative to task difficulty. The reasoning was
+that three dead ends in this project collapsed to a measure of signal magnitude, so dividing by
+realised difficulty should quotient that out. **Measured, it does the opposite**: AUROC 0.320 on
+Experiment 5, worse than either component alone and worse than chance. It is retained in the
+output precisely because it was screened rather than assumed, and because a plausible-sounding
+normalisation failing this badly is worth having on the record.
 
 Runs entirely from a saved checkpoint, so no training has to be repeated.
 """

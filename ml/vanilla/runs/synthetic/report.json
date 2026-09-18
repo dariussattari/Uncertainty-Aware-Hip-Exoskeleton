@@ -1,0 +1,226 @@
+{
+  "config": {
+    "lr": 0.001,
+    "batch_size": 1024,
+    "max_epochs": 60,
+    "patience": 10,
+    "seed": 0,
+    "device": null,
+    "threshold_percentile": 99.5,
+    "n_members": 7,
+    "out_dir": "/Users/dariussattari/Documents/thesis/Uncertainty-Aware-Hip-Exoskeleton/ml/vanilla/runs/synthetic",
+    "loso_folds": null,
+    "target": "correlation",
+    "horizon": 40
+  },
+  "target": "correlation",
+  "target_names": [
+    "summed_pairwise_corr"
+  ],
+  "horizon": 40,
+  "stage1": {
+    "n_epochs": 24,
+    "folds": [
+      {
+        "subject": "AB15",
+        "best_epoch": 4,
+        "val_loss": 0.11795723897737183,
+        "epochs_run": 15
+      },
+      {
+        "subject": "AB17",
+        "best_epoch": 40,
+        "val_loss": 0.043923381821694946,
+        "epochs_run": 51
+      },
+      {
+        "subject": "AB18",
+        "best_epoch": 12,
+        "val_loss": 0.09291794480443283,
+        "epochs_run": 23
+      },
+      {
+        "subject": "AB19",
+        "best_epoch": 7,
+        "val_loss": 0.06142094293491164,
+        "epochs_run": 18
+      },
+      {
+        "subject": "AB21",
+        "best_epoch": 43,
+        "val_loss": 0.03701972635550575,
+        "epochs_run": 54
+      },
+      {
+        "subject": "AB23",
+        "best_epoch": 42,
+        "val_loss": 0.04358719931037846,
+        "epochs_run": 53
+      },
+      {
+        "subject": "AB25",
+        "best_epoch": 39,
+        "val_loss": 0.09565745798182668,
+        "epochs_run": 50
+      },
+      {
+        "subject": "AB26",
+        "best_epoch": 16,
+        "val_loss": 0.05443808801968537,
+        "epochs_run": 27
+      },
+      {
+        "subject": "AB27",
+        "best_epoch": 25,
+        "val_loss": 0.06059689062179333,
+        "epochs_run": 36
+      },
+      {
+        "subject": "AB28",
+        "best_epoch": 19,
+        "val_loss": 0.0782073933091746,
+        "epochs_run": 30
+      },
+      {
+        "subject": "AB31",
+        "best_epoch": 20,
+        "val_loss": 0.03980415117295738,
+        "epochs_run": 31
+      },
+      {
+        "subject": "AB34",
+        "best_epoch": 22,
+        "val_loss": 0.07619310785695912,
+        "epochs_run": 33
+      }
+    ]
+  },
+  "stage2_history": [
+    {
+      "epoch": 0,
+      "train_loss": 0.2141689053370906,
+      "seconds": 73.2
+    },
+    {
+      "epoch": 1,
+      "train_loss": 0.06972724854378048,
+      "seconds": 73.1
+    },
+    {
+      "epoch": 2,
+      "train_loss": 0.05545564986631864,
+      "seconds": 74.2
+    },
+    {
+      "epoch": 3,
+      "train_loss": 0.046533128094071036,
+      "seconds": 102.3
+    },
+    {
+      "epoch": 4,
+      "train_loss": 0.04210563640783848,
+      "seconds": 122.3
+    },
+    {
+      "epoch": 5,
+      "train_loss": 0.03883043361740709,
+      "seconds": 179.5
+    },
+    {
+      "epoch": 6,
+      "train_loss": 0.03635550854966618,
+      "seconds": 119.8
+    },
+    {
+      "epoch": 7,
+      "train_loss": 0.03449451203791858,
+      "seconds": 111.5
+    },
+    {
+      "epoch": 8,
+      "train_loss": 0.03358739814068627,
+      "seconds": 111.2
+    },
+    {
+      "epoch": 9,
+      "train_loss": 0.03177369843437428,
+      "seconds": 110.9
+    },
+    {
+      "epoch": 10,
+      "train_loss": 0.03154190393022187,
+      "seconds": 109.5
+    },
+    {
+      "epoch": 11,
+      "train_loss": 0.028975258556020275,
+      "seconds": 106.9
+    },
+    {
+      "epoch": 12,
+      "train_loss": 0.02892541573432727,
+      "seconds": 105.7
+    },
+    {
+      "epoch": 13,
+      "train_loss": 0.02787073557747204,
+      "seconds": 105.8
+    },
+    {
+      "epoch": 14,
+      "train_loss": 0.02746823513674433,
+      "seconds": 109.7
+    },
+    {
+      "epoch": 15,
+      "train_loss": 0.026183920024370682,
+      "seconds": 109.7
+    },
+    {
+      "epoch": 16,
+      "train_loss": 0.025725367581995787,
+      "seconds": 108.0
+    },
+    {
+      "epoch": 17,
+      "train_loss": 0.02594802399100669,
+      "seconds": 117.7
+    },
+    {
+      "epoch": 18,
+      "train_loss": 0.02442869215237337,
+      "seconds": 115.8
+    },
+    {
+      "epoch": 19,
+      "train_loss": 0.023731318080982746,
+      "seconds": 115.7
+    },
+    {
+      "epoch": 20,
+      "train_loss": 0.024009363068005427,
+      "seconds": 116.0
+    },
+    {
+      "epoch": 21,
+      "train_loss": 0.02466676379228816,
+      "seconds": 115.4
+    },
+    {
+      "epoch": 22,
+      "train_loss": 0.022689678022607556,
+      "seconds": 115.2
+    },
+    {
+      "epoch": 23,
+      "train_loss": 0.02316027787799913,
+      "seconds": 107.8
+    }
+  ],
+  "threshold": 0.03329057618975639,
+  "val_loss": 0.08617652393003351,
+  "psi_train": {
+    "median": 0.007359311915934086,
+    "mean": 0.008690761402249336
+  }
+}
