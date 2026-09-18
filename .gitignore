@@ -232,3 +232,6 @@ data/processed/
 
 research_updates/
 .docx
+# prob_ensemble: cluster run outputs and SLURM logs
+ml/prob_ensemble/runs/
+ml/prob_ensemble/slurm/logs/
