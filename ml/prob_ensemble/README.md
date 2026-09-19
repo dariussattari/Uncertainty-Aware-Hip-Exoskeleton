@@ -53,6 +53,7 @@ python train.py fold --index 0                    # one LOSO fold
 python train.py collect                           # aggregate (needs all 12)
 python train.py final                             # stage 2 + threshold calibration
 python evaluate.py --split test
+python plots.py --split test                      # figures + summary.md
 ```
 
 Sequentially, stage 1 is twelve folds at roughly 68 s per epoch and ~25 epochs per fold — about
@@ -143,6 +144,7 @@ transfers across participants worse than predicted mean does.
 | `data.py` | Experiment 5's dataset, target and horizon pinned |
 | `train.py` | `fold` / `collect` / `final` — the array-safe split of the two-stage protocol |
 | `evaluate.py` | the paper's procedure over all four candidate scores |
+| `plots.py` | seven figures plus `summary.md`; run after `evaluate.py` |
 | `slurm/env.sh` | modules, venv, data staging. **Edit the three `EDIT ME` lines** |
 | `slurm/setup.sh` | one-time venv build with CUDA-matched torch |
 | `slurm/smoke.sbatch` | cheap end-to-end check on `gpu_test` |

@@ -100,11 +100,20 @@ def load_run(run: Path | str, dat, device=None):
 
 @torch.no_grad()
 def score_split(model, loader, device) -> dict:
-    """Every candidate score, plus the calibration diagnostics, for one loader."""
+    """Every candidate score, plus the calibration diagnostics, for one loader.
+
+    Per-window squared z-scores are retained as well as the aggregate, because the aggregate is
+    a mean and a mean is not robust here. Measured on the test split, the mean squared z-score
+    is 16.4 while the median is 1.26: the statistic is dominated by a tail of roughly 0.1% of
+    windows carrying 58% of its mass. Reporting only the mean would say the variance head is
+    badly broken; reporting both says it is calibrated for typical windows and has a heavy tail
+    of confident errors, which is a different and more useful conclusion.
+    """
     model.eval()
     acc = {k: [] for k in ("epistemic", "aleatoric", "total")}
     cal = {"nll": 0.0, "mse": 0.0, "mean_sigma": 0.0, "z_var": 0.0, "frac_clamped": 0.0}
     weight = 0.0
+    z2_per_window = []
     for x, y, mask in loader:
         x, y, mask = x.to(device), y.to(device), mask.to(device)
         mu, logvar = model(x)
@@ -117,9 +126,25 @@ def score_split(model, loader, device) -> dict:
             for k in cal:
                 cal[k] += t[k] * w
             weight += w
+        # per-window mean squared z-score. The mask must be expanded over the branch axis
+        # before it is summed, or the denominator undercounts by a factor of n_branches.
+        m = mask.unsqueeze(1).expand_as(mu)
+        den = torch.clamp(m.sum(dim=(1, 2)), min=1.0)
+        z2 = (((mu - y.unsqueeze(1)) ** 2 / logvar.exp()) * m).sum(dim=(1, 2)) / den
+        z2_per_window.append(z2.cpu().numpy())
+
     out = {k: np.concatenate(v) for k, v in acc.items()}
     out["ratio"] = out["epistemic"] / (out["aleatoric"] + EPS)
-    return out, {k: v / max(weight, 1e-9) for k, v in cal.items()}
+    cal = {k: v / max(weight, 1e-9) for k, v in cal.items()}
+    z2 = np.concatenate(z2_per_window)
+    order = np.sort(z2)[::-1]
+    cal |= {"z2_median": float(np.median(z2)),
+            "z2_mean": float(z2.mean()),
+            "z2_p90": float(np.percentile(z2, 90)),
+            "z2_p99": float(np.percentile(z2, 99)),
+            "z2_share_top_0.1pct": float(
+                order[:max(1, len(order) // 1000)].sum() / max(order.sum(), 1e-12))}
+    return out, cal
 
 
 def _ratio_threshold(model, dat, device, batch_size, percentile=99.5) -> float:
@@ -200,10 +225,14 @@ def evaluate(run: Path | str, dat, split: str = "test", device=None,
 
     if verbose:
         print(f"{s}\n")
-        print(f"  aleatoric-head calibration on {split} in-distribution windows:")
+        print(f"  aleatoric-head calibration on {split} in-distribution windows "
+              f"(target for every z-score statistic is 1.000):")
         cal = s.calibration
-        print(f"    z_var {cal['z_var']:.3f}  (target 1.000; >1 over-confident, "
-              f"<1 over-cautious)")
+        print(f"    median z^2 {cal['z2_median']:8.3f}   <- robust; the one to read")
+        print(f"    mean   z^2 {cal['z2_mean']:8.3f}   90th pct {cal['z2_p90']:7.3f}   "
+              f"99th pct {cal['z2_p99']:8.3f}")
+        print(f"    the worst 0.1% of windows carry "
+              f"{100*cal['z2_share_top_0.1pct']:.1f}% of the total squared z-score")
         print(f"    mean sigma {cal['mean_sigma']:.4f}  NLL {cal['nll']:+.4f}  "
               f"MSE {cal['mse']:.5f}  clamped {100*cal['frac_clamped']:.2f}%\n")
         hdr = f"  {'score':11s} {'AUROC':>7s} {'AUROC raw':>10s} {'J':>7s} {'best J':>7s} " \
