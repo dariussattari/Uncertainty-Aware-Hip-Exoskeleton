@@ -203,9 +203,10 @@ def _syn_figures(target: str):
 
     builder, label = _syn_data(target), describe_target(target)
 
-    def figures(out, split="test", batch_size=1024, device=None, reuse=False):
+    def figures(out, split="test", batch_size=1024, device=None, reuse=False,
+                data_factory=None):
         return run(out=out, split=split, batch_size=batch_size, device=device, reuse=reuse,
-                   data_factory=builder, title=label)
+                   data_factory=data_factory or builder, title=label)
     return figures
 
 

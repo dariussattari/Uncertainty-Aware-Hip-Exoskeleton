@@ -202,6 +202,9 @@ if __name__ == "__main__":
     if not (run / "final.pt").exists():
         raise SystemExit(f"no trained model at {run/'final.pt'} — run training/gan.py first.")
 
+    # NOTE: this standalone entry point builds the PARTICIPANT-SPLIT data. It is correct for
+    # ml/vanilla/runs/, and wrong for anything under ml/LOTO/, where the ID/OOD partition is
+    # applied at load time by ml/LOTO/splits.py. Use `python ml/LOTO/run.py` for those.
     data = GanData(batch_size=a.batch_size)
     print(data, "\n")
     s, metrics = evaluate_gan(run, data, a.split, pick_device(a.device), a.batch_size)

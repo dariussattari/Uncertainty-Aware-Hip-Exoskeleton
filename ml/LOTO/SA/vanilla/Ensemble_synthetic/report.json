@@ -1,0 +1,191 @@
+{
+  "config": {
+    "lr": 0.001,
+    "batch_size": 1024,
+    "max_epochs": 60,
+    "patience": 10,
+    "seed": 0,
+    "device": null,
+    "threshold_percentile": 99.5,
+    "n_members": 7,
+    "out_dir": "/n/home04/dsattari/Uncertainty-Aware-Hip-Exoskeleton/ml/LOTO/SA/vanilla/Ensemble_synthetic",
+    "loso_folds": null,
+    "target": "correlation",
+    "horizon": 40
+  },
+  "target": "correlation",
+  "target_names": [
+    "summed_pairwise_corr"
+  ],
+  "horizon": 40,
+  "stage1": {
+    "n_epochs": 17,
+    "folds": [
+      {
+        "subject": "AB15",
+        "best_epoch": 6,
+        "val_loss": 0.10824507397018056,
+        "epochs_run": 17
+      },
+      {
+        "subject": "AB17",
+        "best_epoch": 23,
+        "val_loss": 0.05883424922849256,
+        "epochs_run": 34
+      },
+      {
+        "subject": "AB18",
+        "best_epoch": 19,
+        "val_loss": 0.10721029498669063,
+        "epochs_run": 30
+      },
+      {
+        "subject": "AB19",
+        "best_epoch": 21,
+        "val_loss": 0.053905242665102195,
+        "epochs_run": 32
+      },
+      {
+        "subject": "AB21",
+        "best_epoch": 18,
+        "val_loss": 0.04538101748804823,
+        "epochs_run": 29
+      },
+      {
+        "subject": "AB23",
+        "best_epoch": 14,
+        "val_loss": 0.054941465237567426,
+        "epochs_run": 25
+      },
+      {
+        "subject": "AB25",
+        "best_epoch": 18,
+        "val_loss": 0.12104102930586186,
+        "epochs_run": 29
+      },
+      {
+        "subject": "AB26",
+        "best_epoch": 9,
+        "val_loss": 0.05813763263035765,
+        "epochs_run": 20
+      },
+      {
+        "subject": "AB27",
+        "best_epoch": 32,
+        "val_loss": 0.06640805175825595,
+        "epochs_run": 43
+      },
+      {
+        "subject": "AB28",
+        "best_epoch": 22,
+        "val_loss": 0.0898101703782771,
+        "epochs_run": 33
+      },
+      {
+        "subject": "AB31",
+        "best_epoch": 6,
+        "val_loss": 0.12855583587902225,
+        "epochs_run": 17
+      },
+      {
+        "subject": "AB34",
+        "best_epoch": 21,
+        "val_loss": 0.2058008370006419,
+        "epochs_run": 32
+      }
+    ]
+  },
+  "stage2_history": [
+    {
+      "epoch": 0,
+      "train_loss": 0.22615558715121914,
+      "seconds": 19.7
+    },
+    {
+      "epoch": 1,
+      "train_loss": 0.09264812255831434,
+      "seconds": 19.2
+    },
+    {
+      "epoch": 2,
+      "train_loss": 0.07857864493453467,
+      "seconds": 19.2
+    },
+    {
+      "epoch": 3,
+      "train_loss": 0.07093345498133624,
+      "seconds": 19.1
+    },
+    {
+      "epoch": 4,
+      "train_loss": 0.06559080828122639,
+      "seconds": 19.1
+    },
+    {
+      "epoch": 5,
+      "train_loss": 0.06263520967678879,
+      "seconds": 19.2
+    },
+    {
+      "epoch": 6,
+      "train_loss": 0.059129475482629,
+      "seconds": 19.2
+    },
+    {
+      "epoch": 7,
+      "train_loss": 0.05766582581317538,
+      "seconds": 19.1
+    },
+    {
+      "epoch": 8,
+      "train_loss": 0.05491266643965059,
+      "seconds": 19.3
+    },
+    {
+      "epoch": 9,
+      "train_loss": 0.05283108984691553,
+      "seconds": 19.1
+    },
+    {
+      "epoch": 10,
+      "train_loss": 0.05175608686446192,
+      "seconds": 19.1
+    },
+    {
+      "epoch": 11,
+      "train_loss": 0.0495922806402632,
+      "seconds": 19.2
+    },
+    {
+      "epoch": 12,
+      "train_loss": 0.048655120891127175,
+      "seconds": 19.2
+    },
+    {
+      "epoch": 13,
+      "train_loss": 0.04759154570058884,
+      "seconds": 19.1
+    },
+    {
+      "epoch": 14,
+      "train_loss": 0.04783839829778113,
+      "seconds": 19.2
+    },
+    {
+      "epoch": 15,
+      "train_loss": 0.04702011766742719,
+      "seconds": 19.2
+    },
+    {
+      "epoch": 16,
+      "train_loss": 0.04633576007479656,
+      "seconds": 19.1
+    }
+  ],
+  "threshold": 0.06212818995118141,
+  "val_loss": 0.14687760406389894,
+  "psi_train": {
+    "median": 0.0108121857047081,
+    "mean": 0.013648360036313534
+  }
+}

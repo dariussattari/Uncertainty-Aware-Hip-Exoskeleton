@@ -9,9 +9,17 @@ in ``targets.py`` so the screening notebook and this file cannot drift apart.
     python ml/vanilla/main.py train --model forecast-angle   # Exp 5: hip angle, 200 ms ahead
     python ml/vanilla/main.py train --model forecast-all     # Exp 6: 16 channels, 200 ms ahead
 
-Why these targets exist at all: gait phase is recovered from force-plate data offline, so the
-reference work's best estimator cannot be run live. Every target here is computable from the
-sixteen sensor channels alone.
+Why these targets exist at all, stated precisely, because it is easy to overstate. Experiment
+1's gait-phase ensemble **is** deployable: at run time it maps the sixteen sensor channels to a
+phase estimate, and its score is the disagreement between branches, which needs no label. What
+force plates supply is the *training* label, and what is therefore unavailable live is any
+quantity built from ground truth — the realised prediction error, and with it the
+Krogh-Vedelsby decomposition.
+
+The targets here remove that training dependency as well: each is computed from the window
+itself, so a model can be trained on data from any sensor rig, without a force-plate lab. And
+because the target is also observable at run time, realised error becomes measurable online —
+a second axis Experiment 1 does not have.
 
 **Score.** The uncertainty score stays the branch variance, identical in definition to
 Experiment 1, so all six models sit on one comparison table under one threshold rule. That

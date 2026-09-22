@@ -1,0 +1,88 @@
+{
+  "model": "gan",
+  "split": "test",
+  "threshold": 0.6492231488227844,
+  "steepness": 19.391258831065045,
+  "metrics": {
+    "accuracy": 97.79173872633795,
+    "precision": 54.3046357615894,
+    "recall": 37.0110330992979,
+    "specificity": 99.25185229805433,
+    "f1": 44.020280345958845,
+    "j_statistic": 36.26288539735223,
+    "auroc": 0.7772213906945824,
+    "counts": {
+      "tp": 738,
+      "fp": 621,
+      "tn": 82384,
+      "fn": 1256
+    },
+    "ece": 0.012080482276267773,
+    "brier": 0.01947786043285944,
+    "n_id": 83005,
+    "n_ood": 1994,
+    "pct_ood": 2.345909951881787
+  },
+  "per_mode": [
+    {
+      "mode": "LG",
+      "kind": "ID",
+      "windows": 28668,
+      "flagged_%": 0.0,
+      "median_psi": 0.27511557936668396
+    },
+    {
+      "mode": "RA",
+      "kind": "ID",
+      "windows": 18504,
+      "flagged_%": 0.0,
+      "median_psi": 0.25392118096351624
+    },
+    {
+      "mode": "RD",
+      "kind": "ID",
+      "windows": 14784,
+      "flagged_%": 0.0,
+      "median_psi": 0.39585673809051514
+    },
+    {
+      "mode": "SA",
+      "kind": "ID",
+      "windows": 10273,
+      "flagged_%": 0.0,
+      "median_psi": 0.31658509373664856
+    },
+    {
+      "mode": "SD",
+      "kind": "ID",
+      "windows": 10155,
+      "flagged_%": 0.0,
+      "median_psi": 0.44652843475341797
+    },
+    {
+      "mode": "TR",
+      "kind": "OOD",
+      "windows": 1994,
+      "flagged_%": 37.0110330992979,
+      "median_psi": 0.5256518721580505
+    },
+    {
+      "mode": "ST",
+      "kind": "ID",
+      "windows": 621,
+      "flagged_%": 100.0,
+      "median_psi": 0.7013412714004517
+    }
+  ],
+  "extra": {
+    "discriminator_health": {
+      "psi_median": 0.30730992555618286,
+      "psi_iqr": 0.1534523069858551,
+      "psi_min": 0.002974182367324829,
+      "psi_max": 0.7187837958335876,
+      "fraction_near_zero": 0.0,
+      "distinct_values": 51464,
+      "degenerate": false
+    }
+  }
+}

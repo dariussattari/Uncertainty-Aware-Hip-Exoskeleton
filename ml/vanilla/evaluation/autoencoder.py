@@ -237,6 +237,9 @@ if __name__ == "__main__":
     if not (run / "final.pt").exists():
         raise SystemExit(f"no trained model at {run/'final.pt'} — run train_ae.py first.")
 
+    # NOTE: this standalone entry point builds the PARTICIPANT-SPLIT data. It is correct for
+    # ml/vanilla/runs/, and wrong for anything under ml/LOTO/, where the ID/OOD partition is
+    # applied at load time by ml/LOTO/splits.py. Use `python ml/LOTO/run.py` for those.
     data = AutoencoderData(batch_size=a.batch_size)
     print(data, "\n")
     bundle, metrics = evaluate_autoencoder(run, data, a.split,

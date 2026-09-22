@@ -1,0 +1,172 @@
+{
+  "config": {
+    "lr": 0.001,
+    "batch_size": 1024,
+    "max_epochs": 60,
+    "patience": 10,
+    "n_members": 7,
+    "threshold_percentile": 99.5,
+    "seed": 0,
+    "beta": 0.5,
+    "warmup_epochs": 3,
+    "grad_clip": 5.0,
+    "device": null,
+    "out_dir": "/n/home04/dsattari/Uncertainty-Aware-Hip-Exoskeleton/ml/LOTO/ST/prob_ensemble/run",
+    "num_workers": 0
+  },
+  "target": "forecast_angle",
+  "horizon": 40,
+  "target_names": [
+    "enc_angle_l",
+    "enc_angle_r"
+  ],
+  "n_epochs": 11,
+  "stage2_history": [
+    {
+      "epoch": 0,
+      "phase": "warmup",
+      "train_loss": 0.09619019485244787,
+      "train_nll": 1.00427158405961,
+      "train_mse": 0.09619019485244787,
+      "mean_sigma": 1.075714077021115,
+      "z_var": 0.11426592726711789,
+      "frac_clamped": 2.9216289574446256e-07,
+      "seconds": 17.2
+    },
+    {
+      "epoch": 1,
+      "phase": "warmup",
+      "train_loss": 0.048797993723456154,
+      "train_nll": 0.9812589545090923,
+      "train_mse": 0.048797993723456154,
+      "mean_sigma": 1.082791839685029,
+      "z_var": 0.057850257626174975,
+      "frac_clamped": 0.0,
+      "seconds": 17.1
+    },
+    {
+      "epoch": 2,
+      "phase": "warmup",
+      "train_loss": 0.0413679366038418,
+      "train_nll": 0.9771236722038643,
+      "train_mse": 0.0413679366038418,
+      "mean_sigma": 1.081840276477753,
+      "z_var": 0.0484927486375626,
+      "frac_clamped": 0.0,
+      "seconds": 17.1
+    },
+    {
+      "epoch": 3,
+      "phase": "nll",
+      "train_loss": -0.21424884181403053,
+      "train_nll": -0.1310477539053821,
+      "train_mse": 0.04698238841742061,
+      "mean_sigma": 0.23792826233064793,
+      "z_var": 0.946124293273513,
+      "frac_clamped": 0.0,
+      "seconds": 17.1
+    },
+    {
+      "epoch": 4,
+      "phase": "nll",
+      "train_loss": -0.2141208158297385,
+      "train_nll": -0.29027692017528733,
+      "train_mse": 0.038025137923052725,
+      "mean_sigma": 0.1889392960248538,
+      "z_var": 0.9842888286504091,
+      "frac_clamped": 0.0,
+      "seconds": 17.1
+    },
+    {
+      "epoch": 5,
+      "phase": "nll",
+      "train_loss": -0.2117392626212063,
+      "train_nll": -0.3385980827012608,
+      "train_mse": 0.035077450763850736,
+      "mean_sigma": 0.18026895590527017,
+      "z_var": 0.988206441262387,
+      "frac_clamped": 0.0,
+      "seconds": 17.1
+    },
+    {
+      "epoch": 6,
+      "phase": "nll",
+      "train_loss": -0.2106003118637253,
+      "train_nll": -0.3638516325339358,
+      "train_mse": 0.03357208515326221,
+      "mean_sigma": 0.17596803609378048,
+      "z_var": 0.9878929586529829,
+      "frac_clamped": 0.0,
+      "seconds": 17.1
+    },
+    {
+      "epoch": 7,
+      "phase": "nll",
+      "train_loss": -0.20920094756321286,
+      "train_nll": -0.38978348322768985,
+      "train_mse": 0.03214028964120071,
+      "mean_sigma": 0.17162346806431084,
+      "z_var": 0.9894962531910054,
+      "frac_clamped": 0.0,
+      "seconds": 17.1
+    },
+    {
+      "epoch": 8,
+      "phase": "nll",
+      "train_loss": -0.20848199801423806,
+      "train_nll": -0.40533063497513083,
+      "train_mse": 0.031198463723513706,
+      "mean_sigma": 0.16899853985694133,
+      "z_var": 0.9886607807517416,
+      "frac_clamped": 0.0,
+      "seconds": 16.8
+    },
+    {
+      "epoch": 9,
+      "phase": "nll",
+      "train_loss": -0.2079203181218839,
+      "train_nll": -0.416066034002906,
+      "train_mse": 0.03060655883404664,
+      "mean_sigma": 0.1672403078151325,
+      "z_var": 0.9880633674939684,
+      "frac_clamped": 0.0,
+      "seconds": 16.4
+    },
+    {
+      "epoch": 10,
+      "phase": "nll",
+      "train_loss": -0.20722854099692647,
+      "train_nll": -0.4315100999294733,
+      "train_mse": 0.029757824384466024,
+      "mean_sigma": 0.1647767879092561,
+      "z_var": 0.9904005261301169,
+      "frac_clamped": 0.0,
+      "seconds": 16.4
+    }
+  ],
+  "thresholds": {
+    "aleatoric": {
+      "threshold": 0.09928082674741745,
+      "median": 0.022721942514181137,
+      "iqr": 0.01898789592087269
+    },
+    "epistemic": {
+      "threshold": 0.024730036035180092,
+      "median": 0.0037947711534798145,
+      "iqr": 0.00344401050824672
+    },
+    "total": {
+      "threshold": 0.11822742223739624,
+      "median": 0.026772387325763702,
+      "iqr": 0.021805573254823685
+    }
+  },
+  "val": {
+    "loss": -0.14500475670218227,
+    "nll": -0.0006220250685908114,
+    "mse": 0.046733400031220895,
+    "mean_sigma": 0.16085588369249867,
+    "z_var": 1.8309965440261897,
+    "frac_clamped": 0.0
+  }
+}

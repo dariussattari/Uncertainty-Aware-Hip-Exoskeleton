@@ -1,0 +1,26 @@
+{
+  "vanilla/AE": {
+    "SA": {
+      "hours": 0.08,
+      "ok": true
+    },
+    "ST": {
+      "hours": 0.12,
+      "ok": true
+    },
+    "TR": {
+      "hours": 0.06,
+      "ok": true
+    }
+  },
+  "vanilla/GAN": {
+    "SA": {
+      "hours": 2.553,
+      "ok": true
+    },
+    "ST": {
+      "hours": 2.763,
+      "ok": true
+    }
+  }
+}

@@ -1,0 +1,14 @@
+[
+  {
+    "subject": "AB15",
+    "best_epoch": 1,
+    "val_loss": 0.025108405828558857,
+    "epochs_run": 2
+  },
+  {
+    "subject": "AB17",
+    "best_epoch": 1,
+    "val_loss": 0.027744060661266216,
+    "epochs_run": 2
+  }
+]

@@ -554,8 +554,11 @@ class SyntheticEnsembleData(AutoencoderData):
     ``(x, y, mask)``, plus ``loso_folds``, ``n_targets`` and ``ood_loader`` — so the two-stage
     training protocol and the evaluator in ``evaluation/ensemble.py`` work unchanged. What
     differs is where ``y`` comes from: it is computed from the input window rather than read
-    from disk, which is the whole point. Gait phase is recovered from force plates offline and
-    does not exist at run time; every target here does.
+    from disk, which is the whole point. Gait phase is recovered from force plates offline, so
+    it exists as a training label but never as a run-time observation -- Experiment 1's model
+    still deploys, it just cannot measure its own error once deployed. Every target here can be
+    observed at both times, which removes the force-plate lab from training and makes realised
+    error available online.
 
     Reads ``data/processed/AE_GAN/`` rather than ``data/processed/``, so it inherits the larger
     unmasked window set the autoencoder and GAN use — dropping the gait-phase label requirement

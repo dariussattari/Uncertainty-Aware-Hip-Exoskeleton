@@ -50,6 +50,20 @@ PAPER_GAN = {"accuracy": 89.4, "precision": 74.9, "recall": 68.7,
              "f1": 71.5, "j_statistic": 63.0, "ece": 0.06, "brier": 0.09}
 
 
+def held_out_label(modes, labels) -> str:
+    """Name the modes actually held out in THIS run, from the labels rather than convention.
+
+    The participant-split protocol holds out four modes at once; leave-one-task-out holds out
+    one, and which one changes per run. A title that says "held-out modes" is therefore either
+    vague or wrong depending on the protocol, and a reader cannot tell which from the figure.
+    """
+    import numpy as np
+    import pandas as pd
+    m = pd.Series(np.asarray(modes))
+    out = sorted(m[np.asarray(labels) == 1].unique().tolist())
+    return "/".join(out) if out else "none"
+
+
 def _save(fig, out_dir: Path, name: str) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     for ext in ("png", "pdf"):
@@ -83,7 +97,8 @@ def fig_psi_by_task(s: GanScores, out: Path):
     ax.set_yticks(range(len(order)))
     ax.set_yticklabels([f"{MODE_NAMES[m]}\n({m})" for m in order], fontsize=9)
     ax.set_xlabel(r"$\Psi = 1 - D(x)$   (causal-median filtered)")
-    ax.set_title("GAN uncertainty by task — blue in-distribution, orange held-out")
+    ax.set_title(f"GAN uncertainty by task — blue in-distribution, orange held out "
+                 f"({held_out_label(s.meta['mode'], s.labels)})")
     ax.legend(loc="lower right", fontsize=8); ax.grid(alpha=0.25, axis="x")
     fig.tight_layout(); _save(fig, out, "gan_psi_by_task")
 
@@ -97,7 +112,7 @@ def fig_roc(s: GanScores, m: dict, out: Path):
             label=f"99.5th-pct threshold\n(J = {m['j_statistic']:.1f})")
     ax.set_xlabel("false positive rate  (ID wrongly flagged)")
     ax.set_ylabel("true positive rate  (OOD caught)")
-    ax.set_title("GAN discriminator: ID vs held-out modes")
+    ax.set_title(f"GAN discriminator: ID vs held out {held_out_label(s.meta['mode'], s.labels)}")
     ax.legend(loc="lower right", fontsize=8); ax.grid(alpha=0.25)
     ax.set_xlim(-0.02, 1.02); ax.set_ylim(-0.02, 1.02)
     fig.tight_layout(); _save(fig, out, "gan_roc")
@@ -371,14 +386,22 @@ def summary(s: GanScores, m: dict, run: Path, h: pd.DataFrame, trials: pd.DataFr
 
 
 def run(out: str = "ml/vanilla/runs/gan", split: str = "test", batch_size: int = 256,
-        device=None, reuse: bool = False) -> int:
-    """Generate every figure. Callable directly, so main.py needs no argv juggling."""
+        device=None, reuse: bool = False, data_factory=None) -> int:
+    """Generate every figure. Callable directly, so main.py needs no argv juggling.
+
+    ``data_factory`` must be the SAME builder the model was trained and evaluated with.
+    Defaulting to :class:`GanData` is right for the participant split and silently wrong
+    anywhere else: the arrays load, the state dict fits, every psi value is correct, and only
+    the ID/OOD labelling is from the wrong protocol -- so the figures come out plausible,
+    mis-coloured and mis-scored, and nothing raises. Under leave-one-task-out that is exactly
+    what happened until this parameter existed.
+    """
     run_dir = resolve_out(out)
     if not (run_dir / "final.pt").exists():
         raise SystemExit(f"no trained model at {run_dir/'final.pt'} — run "
                          f"`main.py train --model gan` first.")
 
-    data = GanData(batch_size=batch_size)
+    data = (data_factory or GanData)(batch_size=batch_size)
     scores_path = run_dir / f"scores_{split}"
     if reuse and scores_path.with_suffix(".npz").exists():
         print(f"reusing {scores_path.name}.npz")

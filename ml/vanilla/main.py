@@ -195,9 +195,18 @@ def cmd_figures(args) -> int:
     if not (run / "final.pt").exists():
         print(f"no checkpoint at {run/'final.pt'} — run `train --model {spec.name}` first.")
         return 1
-    return parts["figures"](out=str(run), split=args.split,
-                            batch_size=_batch_size(args, parts),
-                            device=args.device, reuse=getattr(args, "reuse", False))
+    kw = {"out": str(run), "split": args.split, "batch_size": _batch_size(args, parts),
+          "device": args.device, "reuse": getattr(args, "reuse", False)}
+    # Figures must be drawn against the same data object train and eval used. Several plot
+    # modules default to a hardcoded class, which is correct only for the default protocol;
+    # handing them the registry's own builder removes the chance of disagreeing with eval.
+    import inspect
+    try:
+        if "data_factory" in inspect.signature(parts["figures"]).parameters:
+            kw["data_factory"] = parts["data"]
+    except (TypeError, ValueError):
+        pass
+    return parts["figures"](**kw)
 
 
 def cmd_ambiguity(args) -> int:

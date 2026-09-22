@@ -1,0 +1,51 @@
+{
+  "config": {
+    "lr": 0.001,
+    "batch_size": 1024,
+    "max_epochs": 2,
+    "patience": 1,
+    "seed": 0,
+    "device": null,
+    "threshold_percentile": 99.5,
+    "n_members": 7,
+    "out_dir": "/Users/dariussattari/Documents/thesis/Uncertainty-Aware-Hip-Exoskeleton/ml/vanilla/runs/synthetic_smoke",
+    "loso_folds": 2,
+    "target": "correlation",
+    "horizon": 40
+  },
+  "target": "correlation",
+  "target_names": [
+    "summed_pairwise_corr"
+  ],
+  "horizon": 40,
+  "stage1": {
+    "n_epochs": 1,
+    "folds": [
+      {
+        "subject": "AB15",
+        "best_epoch": 1,
+        "val_loss": 0.2227358384913039,
+        "epochs_run": 2
+      },
+      {
+        "subject": "AB17",
+        "best_epoch": 1,
+        "val_loss": 0.11146784717556465,
+        "epochs_run": 2
+      }
+    ]
+  },
+  "stage2_history": [
+    {
+      "epoch": 0,
+      "train_loss": 0.20927843478205466,
+      "seconds": 137.1
+    }
+  ],
+  "threshold": 0.0856790542602539,
+  "val_loss": 0.17236807313074662,
+  "psi_train": {
+    "median": 0.0173697080463171,
+    "mean": 0.021012457087635994
+  }
+}

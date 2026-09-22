@@ -1,0 +1,56 @@
+{
+  "config": {
+    "lr": 0.0002,
+    "lr_d": 5e-05,
+    "lr_decay": 0.99,
+    "betas": [
+      0.5,
+      0.999
+    ],
+    "batch_size": 256,
+    "max_epochs": 2,
+    "g_steps_per_d": 5,
+    "checkpoint_every": 1,
+    "val_fraction": 0.2,
+    "seed": 0,
+    "device": null,
+    "threshold_percentile": 99.5,
+    "monitor_windows": 1024,
+    "out_dir": "/Users/dariussattari/Documents/thesis/Uncertainty-Aware-Hip-Exoskeleton/ml/vanilla/runs/gan_smoke"
+  },
+  "history": [
+    {
+      "epoch": 0,
+      "loss_g": 0.6183578553921532,
+      "loss_d": 1.3952264498836053,
+      "lr_g": 0.00019800000000000002,
+      "lr_d": 4.9500000000000004e-05,
+      "seconds": 18.5,
+      "d_real": 0.5559453964233398,
+      "d_fake": 0.5376812815666199,
+      "psi_median": 0.44238755106925964,
+      "psi_spread": 0.012835025787353516
+    },
+    {
+      "epoch": 1,
+      "loss_g": 0.63631108159167,
+      "loss_d": 1.402619041225159,
+      "lr_g": 0.00019602,
+      "lr_d": 4.9005e-05,
+      "seconds": 18.2,
+      "d_real": 0.5211423635482788,
+      "d_fake": 0.523935079574585,
+      "psi_median": 0.47885289788246155,
+      "psi_spread": 0.0019216984510421753
+    }
+  ],
+  "val_subjects": [
+    "AB18",
+    "AB28"
+  ],
+  "epochs_run": 2,
+  "n_train_windows": 103310,
+  "threshold": 0.4833729565143585,
+  "psi_train_median": 0.47615087032318115,
+  "psi_train_iqr": 0.004991888999938965
+}

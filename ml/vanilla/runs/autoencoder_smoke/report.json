@@ -1,0 +1,42 @@
+{
+  "config": {
+    "lr": 0.003,
+    "batch_size": 1024,
+    "max_epochs": 2,
+    "patience": 1,
+    "val_fraction": 0.2,
+    "seed": 0,
+    "device": null,
+    "lof_neighbors": 20,
+    "lof_fit_samples": 5000,
+    "threshold_percentile": 99.5,
+    "out_dir": "/Users/dariussattari/Documents/thesis/Uncertainty-Aware-Hip-Exoskeleton/ml/vanilla/runs/autoencoder_smoke"
+  },
+  "history": [
+    {
+      "epoch": 0,
+      "train_loss": 0.4369515434205865,
+      "val_loss": 0.4115550925933452,
+      "seconds": 10.2,
+      "best_epoch": 0
+    },
+    {
+      "epoch": 1,
+      "train_loss": 0.34867500826698467,
+      "val_loss": 0.3736735021808186,
+      "seconds": 7.5,
+      "best_epoch": 1
+    }
+  ],
+  "val_subjects": [
+    "AB18",
+    "AB28"
+  ],
+  "epochs_run": 2,
+  "best_epoch": 1,
+  "psi_train_median": 1.0199367783756863,
+  "threshold": 1.4404547922509718,
+  "recon_train_median": 0.3123421370983124,
+  "threshold_recon": 0.9842436909675598,
+  "latent_dim": 32
+}

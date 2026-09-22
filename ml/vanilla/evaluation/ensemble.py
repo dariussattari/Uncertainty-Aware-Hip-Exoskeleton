@@ -194,6 +194,9 @@ def load_checkpoint(path: Path | str, data: EnsembleGaitPhase, device=None,
 if __name__ == "__main__":  # python ml/vanilla/eval.py [checkpoint]
     import sys
 
+    # NOTE: this standalone entry point builds the PARTICIPANT-SPLIT data. It is correct for
+    # ml/vanilla/runs/, and wrong for anything under ml/LOTO/, where the ID/OOD partition is
+    # applied at load time by ml/LOTO/splits.py. Use `python ml/LOTO/run.py` for those.
     data = EnsembleGaitPhase()
     ckpt_path = Path(sys.argv[1] if len(sys.argv) > 1 else "ml/vanilla/runs/smoke/final.pt")
     if not ckpt_path.exists():

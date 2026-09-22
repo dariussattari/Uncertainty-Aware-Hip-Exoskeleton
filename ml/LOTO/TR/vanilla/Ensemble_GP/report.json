@@ -1,0 +1,155 @@
+{
+  "config": {
+    "lr": 0.001,
+    "batch_size": 1024,
+    "max_epochs": 60,
+    "patience": 10,
+    "seed": 0,
+    "device": null,
+    "threshold_percentile": 99.5,
+    "n_members": 7,
+    "out_dir": "/n/home04/dsattari/Uncertainty-Aware-Hip-Exoskeleton/ml/LOTO/TR/vanilla/Ensemble_GP",
+    "loso_folds": null
+  },
+  "target": "gait_phase",
+  "target_names": [
+    "sin_gp_l",
+    "sin_gp_r"
+  ],
+  "horizon": null,
+  "stage1": {
+    "n_epochs": 10,
+    "folds": [
+      {
+        "subject": "AB15",
+        "best_epoch": 3,
+        "val_loss": 0.021170725702889494,
+        "epochs_run": 14
+      },
+      {
+        "subject": "AB17",
+        "best_epoch": 7,
+        "val_loss": 0.023241526252125194,
+        "epochs_run": 18
+      },
+      {
+        "subject": "AB18",
+        "best_epoch": 17,
+        "val_loss": 0.02601580478557025,
+        "epochs_run": 28
+      },
+      {
+        "subject": "AB19",
+        "best_epoch": 3,
+        "val_loss": 0.027102202098938447,
+        "epochs_run": 14
+      },
+      {
+        "subject": "AB21",
+        "best_epoch": 22,
+        "val_loss": 0.016639611890801407,
+        "epochs_run": 33
+      },
+      {
+        "subject": "AB23",
+        "best_epoch": 15,
+        "val_loss": 0.015667667346951138,
+        "epochs_run": 26
+      },
+      {
+        "subject": "AB25",
+        "best_epoch": 2,
+        "val_loss": 0.03510994789119934,
+        "epochs_run": 13
+      },
+      {
+        "subject": "AB26",
+        "best_epoch": 11,
+        "val_loss": 0.01669200564980776,
+        "epochs_run": 22
+      },
+      {
+        "subject": "AB27",
+        "best_epoch": 14,
+        "val_loss": 0.020604314794624455,
+        "epochs_run": 25
+      },
+      {
+        "subject": "AB28",
+        "best_epoch": 7,
+        "val_loss": 0.022649175426356395,
+        "epochs_run": 18
+      },
+      {
+        "subject": "AB31",
+        "best_epoch": 12,
+        "val_loss": 0.020340789097162415,
+        "epochs_run": 23
+      },
+      {
+        "subject": "AB34",
+        "best_epoch": 10,
+        "val_loss": 0.020171609415836355,
+        "epochs_run": 21
+      }
+    ]
+  },
+  "stage2_history": [
+    {
+      "epoch": 0,
+      "train_loss": 0.03370010309138432,
+      "seconds": 18.8
+    },
+    {
+      "epoch": 1,
+      "train_loss": 0.021014285137391186,
+      "seconds": 17.5
+    },
+    {
+      "epoch": 2,
+      "train_loss": 0.01887915587615625,
+      "seconds": 17.5
+    },
+    {
+      "epoch": 3,
+      "train_loss": 0.017593781693668323,
+      "seconds": 17.5
+    },
+    {
+      "epoch": 4,
+      "train_loss": 0.01683434867913417,
+      "seconds": 17.5
+    },
+    {
+      "epoch": 5,
+      "train_loss": 0.016163075897591635,
+      "seconds": 17.5
+    },
+    {
+      "epoch": 6,
+      "train_loss": 0.01570108371930886,
+      "seconds": 17.5
+    },
+    {
+      "epoch": 7,
+      "train_loss": 0.015238034441564768,
+      "seconds": 17.5
+    },
+    {
+      "epoch": 8,
+      "train_loss": 0.01486337063386794,
+      "seconds": 17.5
+    },
+    {
+      "epoch": 9,
+      "train_loss": 0.014406541069137118,
+      "seconds": 17.5
+    }
+  ],
+  "threshold": 0.033321693539619446,
+  "val_loss": 0.021381900650241432,
+  "psi_train": {
+    "median": 0.0007485993555746973,
+    "mean": 0.0018494670512154698
+  }
+}

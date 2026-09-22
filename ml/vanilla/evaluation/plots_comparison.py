@@ -20,32 +20,36 @@ import matplotlib.pyplot as plt
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT_DIR = ROOT / "runs" / "comparison" / "figures"
 
-PANELS = [
-    (
-        "A. Gait-phase TCN ensemble",
-        ROOT / "runs" / "ensemble_gp" / "figures" / "psi_by_task.png",
-    ),
-    (
-        "B. Autoencoder with latent LOF",
-        ROOT / "runs" / "autoencoder" / "figures" / "ae_psi_by_task.png",
-    ),
-    (
-        "C. TCN GAN discriminator",
-        ROOT / "runs" / "gan" / "figures" / "gan_psi_by_task.png",
-    ),
-    (
-        "D. Summed-correlation TCN ensemble",
-        ROOT / "runs" / "synthetic" / "figures" / "psi_by_task.png",
-    ),
-    (
-        "E. 200 ms bilateral hip-angle forecast ensemble",
-        ROOT / "runs" / "forecast_angle" / "figures" / "psi_by_task.png",
-    ),
+# (label, run directory relative to the run root, figure filename). The run root is a
+# parameter rather than a constant because the same five panels exist under a different
+# protocol in ml/LOTO/<TASK>/, and assembling participant-split panels under a
+# leave-one-task-out heading would be a silent, entirely plausible-looking error.
+PANEL_SPEC = [
+    ("A. Gait-phase TCN ensemble", ("ensemble_gp", "vanilla/Ensemble_GP"), "psi_by_task.png"),
+    ("B. Autoencoder with latent LOF", ("autoencoder", "vanilla/AE"), "ae_psi_by_task.png"),
+    ("C. TCN GAN discriminator", ("gan", "vanilla/GAN"), "gan_psi_by_task.png"),
+    ("D. Summed-correlation TCN ensemble",
+     ("synthetic", "vanilla/Ensemble_synthetic"), "psi_by_task.png"),
+    ("E. 200 ms bilateral hip-angle forecast ensemble",
+     ("forecast_angle", "vanilla/Ensemble_forecast"), "psi_by_task.png"),
 ]
 
 
-def make_combined_psi_by_task(output_dir: Path = OUTPUT_DIR) -> tuple[Path, Path]:
+def panels(root: Path | None = None, loto: bool = False) -> list[tuple[str, Path]]:
+    """Resolve the five panel paths under ``root`` (default: the participant-split runs)."""
+    base = Path(root) if root is not None else ROOT / "runs"
+    i = 1 if loto else 0
+    return [(label, base / dirs[i] / "figures" / name) for label, dirs, name in PANEL_SPEC]
+
+
+PANELS = panels()
+
+
+def make_combined_psi_by_task(output_dir: Path = OUTPUT_DIR,
+                              panel_list: list[tuple[str, Path]] | None = None,
+                              subtitle: str | None = None) -> tuple[Path, Path]:
     """Stack the five completed per-task Psi distributions into one figure."""
+    PANELS = panel_list if panel_list is not None else panels()
     missing = [str(path) for _, path in PANELS if not path.exists()]
     if missing:
         raise FileNotFoundError("Missing source figure(s):\n" + "\n".join(missing))
@@ -85,6 +89,7 @@ def make_combined_psi_by_task(output_dir: Path = OUTPUT_DIR) -> tuple[Path, Path
     header.text(
         0.5,
         0.27,
+        subtitle or
         "Blue = in-distribution; orange = held-out pseudo-OOD. "
         "Each panel retains its own score scale and 99.5th-percentile ID-training threshold.",
         ha="center",

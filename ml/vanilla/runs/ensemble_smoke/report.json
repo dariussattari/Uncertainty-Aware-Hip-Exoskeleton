@@ -1,0 +1,50 @@
+{
+  "config": {
+    "lr": 0.001,
+    "batch_size": 1024,
+    "max_epochs": 2,
+    "patience": 1,
+    "seed": 0,
+    "device": null,
+    "threshold_percentile": 99.5,
+    "n_members": 7,
+    "out_dir": "/Users/dariussattari/Documents/thesis/Uncertainty-Aware-Hip-Exoskeleton/ml/vanilla/runs/ensemble_smoke",
+    "loso_folds": 2
+  },
+  "target": "gait_phase",
+  "target_names": [
+    "sin_gp_l",
+    "sin_gp_r"
+  ],
+  "horizon": null,
+  "stage1": {
+    "n_epochs": 1,
+    "folds": [
+      {
+        "subject": "AB15",
+        "best_epoch": 1,
+        "val_loss": 0.025108405828558857,
+        "epochs_run": 2
+      },
+      {
+        "subject": "AB17",
+        "best_epoch": 1,
+        "val_loss": 0.027744060661266216,
+        "epochs_run": 2
+      }
+    ]
+  },
+  "stage2_history": [
+    {
+      "epoch": 0,
+      "train_loss": 0.033698134656054486,
+      "seconds": 106.2
+    }
+  ],
+  "threshold": 0.00762909185141325,
+  "val_loss": 0.02571509258557214,
+  "psi_train": {
+    "median": 0.000863472290802747,
+    "mean": 0.0012125883949920535
+  }
+}
