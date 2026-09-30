@@ -56,6 +56,10 @@ def _side_block(side: str) -> list[str]:
 
 
 INPUT_16 = _side_block("l") + _side_block("r")
+# The pelvis-mounted IMU the 16-channel set leaves out. ``--channels pelvis`` appends it, so a
+# 22-channel ablation can ask whether it adds anything a model can use.
+PELVIS_6 = [f"pelvis_accel_{a}" for a in "xyz"] + [f"pelvis_gyro_{a}" for a in "xyz"]
+CHANNEL_SETS = {"thigh": INPUT_16, "pelvis": INPUT_16 + PELVIS_6}
 TARGET_GP = ["gp_hs_l", "gp_hs_r"]
 SAMPLE_RATE_HZ, WINDOW, STRIDE = 200, 200, 10
 ALL_MODES = ["LG", "RA", "RD", "SA", "SD", "ST", "TR"]
@@ -79,13 +83,14 @@ OUT_ROOT = REPO / "data" / "processed_all"
 # changes, this must change with it -- --verify is what catches the drift.
 
 def extract_windows(subject: str, trial: str, target_cols: list[str] | None = None,
-                    window: int = WINDOW, stride: int = STRIDE, require_both: bool = False):
+                    window: int = WINDOW, stride: int = STRIDE, require_both: bool = False,
+                    channels: list[str] = INPUT_16):
     d = DATA_ROOT / subject / trial
-    X_full = pd.read_csv(d / "exo.csv", usecols=INPUT_16)[INPUT_16].to_numpy(np.float32)
+    X_full = pd.read_csv(d / "exo.csv", usecols=channels)[channels].to_numpy(np.float32)
 
     supervised = target_cols is not None
     n_t = len(target_cols) if supervised else 0
-    empty = (np.empty((0, 16, window), np.float32), np.empty((0, n_t), np.float32),
+    empty = (np.empty((0, len(channels), window), np.float32), np.empty((0, n_t), np.float32),
              np.empty((0, n_t), np.float32), np.empty(0, np.int32))
 
     n = len(X_full)
@@ -127,7 +132,8 @@ def to_sine_phase(y: np.ndarray, mask: np.ndarray) -> np.ndarray:
 # ---------------------------------------------------------------- build
 
 def build_split(name: str, trials: pd.DataFrame, out_dir: Path,
-                target_cols: list[str] | None = None, overwrite: bool = False) -> dict:
+                target_cols: list[str] | None = None, overwrite: bool = False,
+                channels: list[str] = INPUT_16) -> dict:
     out_dir.mkdir(parents=True, exist_ok=True)
     supervised = target_cols is not None
     paths = {"X": out_dir / f"{name}_X.npy", "meta": out_dir / f"{name}_meta.parquet"}
@@ -139,16 +145,16 @@ def build_split(name: str, trials: pd.DataFrame, out_dir: Path,
 
     counts, kept = [], []
     for r in trials.itertuples():
-        *_, ends = extract_windows(r.subject, r.trial, target_cols)
+        *_, ends = extract_windows(r.subject, r.trial, target_cols, channels=channels)
         if len(ends):
             counts.append(len(ends)); kept.append(r)
     total = int(sum(counts))
     print(f"  [{out_dir.name}/{name}] {len(kept)}/{len(trials)} trials -> {total:,} windows "
-          f"({total * 16 * WINDOW * 4 / 1e9:.2f} GB)")
+          f"({total * len(channels) * WINDOW * 4 / 1e9:.2f} GB)")
 
     n_t = len(target_cols) if supervised else 0
     mm = {"X": np.lib.format.open_memmap(paths["X"], mode="w+", dtype=np.float32,
-                                         shape=(total, 16, WINDOW))}
+                                         shape=(total, len(channels), WINDOW))}
     if supervised:
         for k in ("y", "mask"):
             mm[k] = np.lib.format.open_memmap(paths[k], mode="w+", dtype=np.float32,
@@ -156,7 +162,7 @@ def build_split(name: str, trials: pd.DataFrame, out_dir: Path,
 
     rows, off = [], 0
     for r, n in zip(kept, counts):
-        X, y, mask, ends = extract_windows(r.subject, r.trial, target_cols)
+        X, y, mask, ends = extract_windows(r.subject, r.trial, target_cols, channels=channels)
         mm["X"][off:off + n] = X
         if supervised:
             mm["y"][off:off + n] = to_sine_phase(y, mask)
@@ -203,13 +209,43 @@ def verify(splits: dict) -> bool:
     return ok
 
 
+def verify_pelvis(out_root: Path, n_check: int = 500) -> bool:
+    """The 22-channel set must be the 16-channel set plus six columns: same windows, same order."""
+    ok = True
+    rng = np.random.default_rng(0)
+    for name in ("train", "val", "test"):
+        new_m, old_m = out_root / "AE_GAN" / f"{name}_meta.parquet", OUT_ROOT / "AE_GAN" / f"{name}_meta.parquet"
+        if not (new_m.exists() and old_m.exists()):
+            print(f"  pelvis/{name}: missing, skipped"); ok = False; continue
+        nm, om = pd.read_parquet(new_m), pd.read_parquet(old_m)
+        same_meta = len(nm) == len(om) and (nm[["subject", "trial", "end_idx"]].to_numpy() == om[["subject", "trial", "end_idx"]].to_numpy()).all()
+        X22 = np.load(out_root / "AE_GAN" / f"{name}_X.npy", mmap_mode="r")
+        X16 = np.load(OUT_ROOT / "AE_GAN" / f"{name}_X.npy", mmap_mode="r")
+        same_x = X22.shape[1] == len(CHANNEL_SETS["pelvis"]) and same_meta
+        if same_x:
+            pick = np.sort(rng.choice(len(nm), min(n_check, len(nm)), replace=False))
+            same_x = np.array_equal(np.asarray(X22[pick][:, :16]), np.asarray(X16[pick]))
+        print(f"  pelvis/{name}: {len(nm):,} windows, shape {tuple(X22.shape)}; meta identical={same_meta}, "
+              f"first 16 channels identical on {min(n_check, len(nm))} windows={same_x}")
+        ok &= bool(same_meta and same_x)
+    return ok
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     p.add_argument("--dry-run", action="store_true", help="counts only, writes nothing")
     p.add_argument("--verify", action="store_true", help="check against the existing arrays")
     p.add_argument("--overwrite", action="store_true")
     p.add_argument("--family", default="both", choices=("both", "AE_GAN", "ensemble"))
+    p.add_argument("--channels", default="thigh", choices=tuple(CHANNEL_SETS),
+                   help="thigh: the 16 processed channels; pelvis: those plus the 6 pelvis IMU channels")
+    p.add_argument("--out-root", default=None,
+                   help="where to write; default data/processed_all (thigh) or data/processed_all_pelvis (pelvis)")
     a = p.parse_args()
+    channels = CHANNEL_SETS[a.channels]
+    out_root = Path(a.out_root) if a.out_root else (OUT_ROOT if a.channels == "thigh" else REPO / "data" / "processed_all_pelvis")
+    if a.channels != "thigh" and a.family != "AE_GAN":
+        a.family = "AE_GAN"          # the ablation reads the label-free family only
 
     pool, splits = trial_pool()
     print(f"repo {REPO}")
@@ -218,7 +254,7 @@ def main() -> int:
         print(f"  {k:5s} {len(v):2d} participants {v}")
 
     if a.verify:
-        return 0 if verify(splits) else 1
+        return 0 if (verify_pelvis(out_root) if a.channels != "thigh" else verify(splits)) else 1
 
     print("\nwindows per split and mode (what the rebuild will produce):")
     for name, subs in splits.items():
@@ -234,10 +270,40 @@ def main() -> int:
     if a.family != "both":
         fams = [f for f in fams if f[0] == a.family]
     for fam, target in fams:
-        print(f"\n=== {fam} ===")
+        print(f"\n=== {fam} ({len(channels)} channels -> {out_root / fam}) ===")
         for name, subs in splits.items():
-            build_split(name, pool[pool["subject"].isin(subs)], OUT_ROOT / fam,
-                        target_cols=target, overwrite=a.overwrite)
+            build_split(name, pool[pool["subject"].isin(subs)], out_root / fam,
+                        target_cols=target, overwrite=a.overwrite, channels=channels)
+        if a.channels != "thigh":
+            # Scaler: the 16 shared channels keep the existing scaler's numbers exactly, so that
+            # the only difference from the 16-channel arrays is the six added columns; the pelvis
+            # channels are fitted the same way the refit branch below does it.
+            base = np.load(OUT_ROOT / fam / "scaler.npz")
+            if [str(c) for c in base["channels"]] != INPUT_16:
+                raise RuntimeError("the 16-channel scaler's channel order is not INPUT_16")
+            meta = pd.read_parquet(out_root / fam / "train_meta.parquet")
+            X = np.load(out_root / fam / "train_X.npy", mmap_mode="r")
+            idx = meta.index[meta["mode"].isin(ORIGINAL_ID)].to_numpy()
+            pick = np.sort(np.random.default_rng(0).choice(idx, size=min(60_000, len(idx)), replace=False))
+            sub = np.asarray(X[pick][:, 16:], dtype=np.float64)
+            mean, std = sub.mean(axis=(0, 2)), sub.std(axis=(0, 2))
+            std[std < 1e-8] = 1.0
+            np.savez(out_root / fam / "scaler.npz",
+                     mean=np.r_[base["mean"], mean].astype(np.float32), std=np.r_[base["std"], std].astype(np.float32),
+                     channels=np.array(channels))
+            (out_root / fam / "config.json").write_text(json.dumps({
+                "source": "Molinaro et al. 2024, Sci. Robot. 9 eadi8852 (Zenodo 10849318)",
+                "set": f"{fam}, mode-complete for leave-one-task-out, plus the pelvis IMU (ablation)",
+                "input_channels": channels, "n_channels": len(channels),
+                "sample_rate_hz": SAMPLE_RATE_HZ, "window_samples": WINDOW,
+                "window_seconds": WINDOW / SAMPLE_RATE_HZ, "stride_samples": STRIDE,
+                "modes": ALL_MODES, "splits": splits,
+                "scaler_fit_on": f"first 16 channels copied from processed_all/{fam}/scaler.npz; pelvis channels "
+                                 f"fitted on train windows of {ORIGINAL_ID} only",
+                "note": "no ID/OOD partition on disk; ml/LOTO/splits.py applies it at load time",
+            }, indent=2))
+            print("  wrote the 22-channel scaler.npz (16 copied + 6 fitted) and config.json")
+            continue
         # The scaler is **reused from the participant-split build**, not refit. It was fit on
         # training windows of LG/RA/RD, which is a population these arrays still contain, and
         # copying it makes a LOTO run and a participant-split run scale their inputs by exactly
@@ -275,7 +341,7 @@ def main() -> int:
         print(f"  wrote scaler.npz and config.json")
 
     print("\nverifying against the existing arrays:")
-    return 0 if verify(splits) else 1
+    return 0 if (verify_pelvis(out_root) if a.channels != "thigh" else verify(splits)) else 1
 
 
 if __name__ == "__main__":

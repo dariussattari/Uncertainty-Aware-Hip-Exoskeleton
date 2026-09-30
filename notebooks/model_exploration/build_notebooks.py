@@ -1,4 +1,4 @@
-"""Emit an apply_patch patch for the eight exploration notebooks (no training)."""
+"""Emit a patch for, or write, the nine exploration notebooks (no training)."""
 from pathlib import Path
 from textwrap import dedent
 import argparse
@@ -129,6 +129,7 @@ dict(file='02_autoencoder_lof',key='autoencoder',title='Convolutional autoencode
           ('ae_score_comparison.png','LOF versus reconstruction error: different scores can rank the same tasks differently.'),
           ('ae_psi_by_task.png','Latent-density scores, per-task spread and threshold.'),
           ('ae_detection_by_task.png','Per-task flags at the saved threshold.')],
+ extra='ae_umap',
  sources=['ml/vanilla/models/autoencoder.py','ml/vanilla/training/autoencoder.py','ml/vanilla/evaluation/autoencoder.py'],
  takeaway='AE + LOF has the strongest worst-holdout AUROC among the primary scores in the completed LOTO matrix, but its stair-ascent recall at the saved threshold is very low. Ranking robustness is not deployment readiness.'),
 dict(file='03_gan',key='gan',title='GAN discriminator as an OOD score',
@@ -251,6 +252,245 @@ dict(file='07_probabilistic_ensemble',key='prob_ensemble',title='Probabilistic h
 ]
 
 
+LOTO_SPREAD = r'''## LOTO score spread and threshold what-if
+
+Each figure uses one separately trained holdout run: **only the named held-out task is
+orange (OOD)**; the other six are blue (ID). The black dashed line is that run's saved
+training threshold. Black bars span the middle 50% (IQR), with a tick at the median.
+Density shapes use at most 1,500 quantile-spaced points per task; all medians, IQRs and
+flag rates use **every saved test window**. Non-GAN scores use log10 axes when positive.
+The plotted scores already include the original per-trial smoothing; they are not filtered again.
+
+$$\operatorname{recall}(\tau)=\frac{\sum_{i:y_i=1}\mathbf{1}[\widetilde\Psi_i>\tau]}{N_{\rm OOD}},
+\qquad \operatorname{FPR}(\tau)=\frac{\sum_{i:y_i=0}\mathbf{1}[\widetilde\Psi_i>\tau]}{N_{\rm ID}}.$$
+
+**Try a threshold:** replace a `None` in `LOTO_THRESHOLDS` with a numeric score threshold
+(in original units, **not log10**), then rerun this cell. A purple line and exact per-task
+flag rates show the what-if; `None` uses the saved threshold. The right-hand staircase
+and table show recall **and ID false alarms**, not AUROC. Changing the threshold does
+not change AUROC, retrain anything, or overwrite saved results.
+
+These are **exploratory test-set what-ifs**, not validated new operating points. Choose a
+final threshold using validation data, not whichever test threshold looks best. Rates
+are window-weighted; overlapping windows (especially the single standing trial) are
+not independent repetitions. Missing runs remain explicitly unavailable.
+'''
+
+
+def loto_spread_cells(key):
+    score = 'epistemic' if key == 'prob_ensemble' else 'primary'
+    options = "# Other saved scores: 'aleatoric', 'total', 'ratio'.\n" if key == 'prob_ensemble' else ''
+    return [md(LOTO_SPREAD), code(
+        "from _loto_exploration import loto_score_explorer, threshold_rates\n"
+        "LOTO_THRESHOLDS = {'SA': None, 'ST': None, 'TR': None}\n"
+        + options + f"LOTO_SCORE = {score!r}\n"
+        "loto_bundles = loto_score_explorer(KEY, score=LOTO_SCORE, thresholds=LOTO_THRESHOLDS)\n"
+        "# Exact custom query, e.g.: threshold_rates(loto_bundles['ST'], [0.59, 0.60])")]
+
+
+def vae_loto_spread_cells():
+    return [md(LOTO_SPREAD), code('''from _loto_exploration import loto_score_explorer, threshold_rates
+LOTO_THRESHOLDS = {'SA': None, 'ST': None, 'TR': None}
+LOTO_SCORE = 'latent_lof'  # Or 'reconstruction_nll', 'kl', 'negative_elbo'.
+vae_loto_bundles = {}
+for variant in VARIANTS:
+    display(Markdown(f'## LOTO: {variant} VAE'))
+    run_dirs = {task: ROOT / 'ml/VAE/runs' / f'{task}_{variant}_seed{SEED}'
+                for task in ('SA', 'ST', 'TR')}
+    vae_loto_bundles[variant] = loto_score_explorer(
+        'vae', score=LOTO_SCORE, thresholds=LOTO_THRESHOLDS, run_dirs=run_dirs)''')]
+
+
+UMAP_HOWTO = """
+**Three projections of the same rows.** `umap` is nonlinear and neighbourhood-preserving:
+distances, cluster areas and gaps are not measurements. `pca` is linear, fitted on the same
+reference rows, and its axis labels carry the explained variance. `latent` is two or three raw
+latent coordinates with no transformation at all: the only view in which a distance is a true
+latent distance, at the price of showing 2-3 of 32 dimensions (`LATENT_DIMS = None` picks the
+highest-variance ones on the reference rows; give a tuple such as `(0, 8, 16)` to choose).
+
+**Layout.** In 2-D and in 3-D the projections are side-by-side panels of one figure (the VAE's
+view buttons switch all panels together). Every 3-D panel is a WebGL scene, browsers allow only
+about 8-16 live WebGL contexts per page, and JupyterLab is one page for every open notebook: a
+three-panel 3-D figure costs three. If a 3-D panel ever shows its legend but a blank scene, close
+the other notebook tabs and reload the page. 2-D maps are SVG and never hit that cap.
+
+**How to move around (Plotly):** scroll to zoom, drag to pan (2-D) or rotate (3-D; right-drag
+pans), double-click to reset. Click a task in the legend to hide it in every panel; double-click
+a task to isolate it. Hover shows the participant and trial. `VIEW_DIMS` selects `(2,)`, `(3,)`
+or `(2, 3)`; `PROJECTIONS` selects which projections appear. With `SAVE_HTML = True` each figure
+is also written as a standalone page under `notebooks/model_exploration/interactive/` (ignored
+by git) for full-screen browsing.
+
+Every task keeps **one fixed colour and marker symbol**, whatever role a protocol assigns it.
+UMAP embeddings are cached under `.cache/`; delete that folder to recompute.
+"""
+
+
+def ae_umap_cells():
+    return [md('## Interactive views of the saved latent space: UMAP, PCA and raw latent coordinates\n\n'
+               'Same 32-D test latents as `ae_latent_space.png`, now interactive and task-coloured. UMAP and PCA '
+               'are **fitted on in-distribution latents only** (a random subset) and every task is then '
+               'transformed into that fixed map, mirroring the discipline of the saved PCA figure; the latent '
+               'panel is the untransformed coordinates. The hover text carries the saved smoothed LOF score.\n' + UMAP_HOWTO),
+            code("""from _umap_exploration import ae_latent_views, task_counts
+VIEW_DIMS = (2, 3)                       # (2,), (3,) or (2, 3)
+PROJECTIONS = ('umap', 'pca', 'latent')  # side-by-side panels in 2-D and 3-D
+LATENT_DIMS = None                       # e.g. (0, 8, 16); None = highest-variance latent coordinates
+MAX_POINTS = 12_000                      # stratified sample; standing and transitions keep every window
+VIEW_SEED = 0
+SAVE_HTML = True                         # standalone copies under notebooks/model_exploration/interactive/
+ae_views = ae_latent_views(RUN, dims=VIEW_DIMS, projections=PROJECTIONS, latent_dims=LATENT_DIMS,
+                           max_points=MAX_POINTS, seed=VIEW_SEED, save_html=SAVE_HTML)""")]
+
+
+def vae_umap_cells():
+    return [md('### Interactive views: posterior means, sampled latent vectors, learned variance\n\n'
+               'For each trained run, UMAP and PCA are fitted on the **training reference means** and three views '
+               'share those coordinates (plus the raw latent coordinates). The projections are side-by-side panels of one '
+               'figure per dimensionality, with `means` / `samples` / `variance` buttons switching every panel:\n\n'
+               '1. **Posterior means** $\\mu_\\phi(x)$ by task.\n'
+               '2. **Sampled latent vectors** $z=\\mu+\\sigma\\odot\\epsilon$: a few reparameterized draws per '
+               'window, plus dense clouds of draws around two windows per task (black-outlined in 2-D) to show '
+               'the local spread of $q_\\phi(z\\mid x)$.\n'
+               '3. **Learned variance**: the means coloured by the average $\\sigma^2_\\phi(x)$ over the 32 '
+               'latent dimensions (log10). The table underneath gives exact per-task medians from all saved windows.\n\n'
+               'The variance is a property of the 32-D Gaussian; a cloud\'s footprint in a UMAP or PCA plane is '
+               'a distorted picture of it, not a confidence region (in the latent panel it is an exact 2-D/3-D '
+               'marginal). Runs saved before variances were stored only show view 1.\n' + UMAP_HOWTO),
+            code("""from _umap_exploration import vae_latent_views
+VIEW_DIMS = (2, 3)                       # (2,), (3,) or (2, 3)
+PROJECTIONS = ('umap', 'pca', 'latent')  # side-by-side panels in 2-D and 3-D
+LATENT_DIMS = None                       # e.g. (0, 8, 16); None = highest-variance latent coordinates
+MAX_POINTS = 8_000                       # windows in the mean/variance views (stratified by task)
+VIEW_SEED = 0
+SAVE_HTML = True                         # standalone copies under notebooks/model_exploration/interactive/
+vae_views = {}
+for name, out in VAE_RUNS.items():
+    display(Markdown(f'#### {name}: latent views'))
+    vae_views[name] = vae_latent_views(out, dims=VIEW_DIMS, projections=PROJECTIONS, latent_dims=LATENT_DIMS,
+                                       max_points=MAX_POINTS, seed=VIEW_SEED, save_html=SAVE_HTML)""")]
+
+
+def all_tasks_notebook():
+    return [md("""# All tasks on one interactive map: UMAP and PCA
+
+Where do the seven ambulation tasks sit relative to one another **in the raw sensor space**, before
+any model learns a representation? This notebook embeds standardized sensor windows with UMAP and
+lets you pan, zoom and rotate through them in 2-D and 3-D. It is a browsing tool, not a benchmark:
+nothing is trained, scored or thresholded here, and no task is labelled in-distribution or
+out-of-distribution.
+
+Learned representations have their own UMAP sections: the AE latent map in
+[02_autoencoder_lof.ipynb](02_autoencoder_lof.ipynb) and the VAE posterior means, samples and
+variances in [08_vae_variants.ipynb](08_vae_variants.ipynb)."""),
+            code(SETUP),
+            md("""## What is embedded
+
+- Source: the mode-complete set `data/processed_all/AE_GAN` (all seven tasks in one split, the same
+  windows the LOTO runs score). `SPLIT` defaults to the test participants; `train` and `val` also work
+  but take longer to read.
+- Each window is 16 channels × 200 samples, standardized with that set's scaler (fitted on LG/RA/RD
+  training windows only, so scaling does not depend on which task is held out), then flattened to
+  3,200 values.
+- A stratified sample of at most `MAX_POINTS` windows is drawn; standing (621 test windows) and
+  transitions keep every window. The sample is reduced to 50 principal components (the standard UMAP
+  preprocessing) and UMAP is fitted on all sampled windows, since there is no reference/other split here.
+  The PCA panel shows the first of those components, labelled with their share of the raw window variance.
+
+$$x\\in\\mathbb R^{16\\times 200}\\;\\xrightarrow{\\text{standardize, flatten}}\\;\\mathbb R^{3200}
+\\;\\xrightarrow{\\text{PCA}}\\;\\mathbb R^{50}\\;\\xrightarrow{\\text{UMAP}}\\;\\mathbb R^{2}\\text{ or }\\mathbb R^{3}.$$
+""" + UMAP_HOWTO),
+            code("""from _umap_exploration import sensor_windows, feature_views, task_counts, TASK_COLORS
+SPLIT = 'test'               # 'train', 'val' or 'test' participants
+VIEW_DIMS = (2, 3)           # (2,), (3,) or (2, 3)
+PROJECTIONS = ('umap', 'pca')  # no latent space here: raw windows have 3,200 coordinates
+MAX_POINTS = 12_000          # stratified sample of windows; small tasks keep every window
+VIEW_SEED = 0
+SAVE_HTML = True             # standalone copies under notebooks/model_exploration/interactive/
+windows = sensor_windows(SPLIT, max_points=MAX_POINTS, seed=VIEW_SEED)
+print(f"{len(windows['meta']):,} of the {SPLIT} windows sampled; 50 PCs keep "
+      f"{windows['explained']:.1%} of the variance of the flattened windows.")
+display(task_counts(windows['meta']))
+all_task_views = feature_views(windows['features'], windows['meta'], np.arange(len(windows['meta'])),
+                               dims=VIEW_DIMS, projections=PROJECTIONS, title=f'Sensor windows ({SPLIT})',
+                               cache_key=f'sensor_{SPLIT}', seed=VIEW_SEED, max_points=None,
+                               save_html=SAVE_HTML, fitted_on='all sampled windows',
+                               pca_variance_scale=windows['explained'])"""),
+            md("""## Reading the map
+
+- Overlap between tasks in this map means their one-second sensor windows look alike to a
+  neighbourhood-preserving embedding of PCA features. It does not mean a detector cannot separate
+  them, and separation here does not mean a detector will.
+- Windows from one trial are ten samples apart and overlap heavily, so strands of points often trace
+  single trials. Hover to see which participant and trial a strand belongs to; isolate a task with a
+  double-click on the legend.
+- Compare with the AE latent map and the VAE posterior views to see what each model keeps or discards.
+- UMAP is stochastic and seed-dependent; `VIEW_SEED` and the cache make a view reproducible, not
+  canonical. Distances and cluster areas are not measurements; the PCA panel is the linear reference.
+"""),
+            md("""## Variant: does the pelvis IMU add task structure?
+
+The raw trials carry a seventh sensor the processed set leaves out: a pelvis-mounted IMU
+(`pelvis_accel_xyz`, `pelvis_gyro_xyz`, six channels in `exo.csv`). Adding it to the model input
+is not free: few public gait datasets carry a pelvis IMU at the same placement, so every channel
+added here narrows the datasets a trained model can later be checked against. Before paying that,
+look at the raw data alone: does the pelvis IMU change how the seven tasks sit relative to one another?
+
+Three channel sets are built from **the same sampled windows** (same rows, same order):
+
+| set | channels | standardization |
+|---|---|---|
+| `thigh` | the processed 16: hip encoder angle + velocity and thigh IMU, both legs | the set's scaler (LG/RA/RD training windows) |
+| `pelvis` | the 6 pelvis IMU channels, sliced from the raw trials at the same `end_idx` | mean/std over the same LG/RA/RD training trials |
+| `thigh+pelvis` | all 22 | both |
+
+Each set is flattened, reduced to 50 principal components and embedded exactly as above. The
+`thigh` views are the figures higher up; the two new sets get their own maps below.
+
+Looking is not enough to say "worth adding", so one number accompanies the maps: **k-NN task accuracy**
+(k = 15) in the 50-PC space, and in the UMAP embeddings for reference. Windows from one trial overlap by
+95 % and would label their own neighbours under a random split, so whole recordings are held out, in two ways:
+
+- *participant held out*: one fold per test participant, the stricter question (does the structure carry
+  across people?). Standing and transitions were recorded by one test participant only, so they cannot be
+  scored this way (recall NaN) and they pull the plain accuracy down for every set alike.
+- *trial held out*: five folds of whole trials. Transitions (five trials) are scored here; standing is a
+  single trial in the test split, so it stays unscored under both schemes and its 621 windows count only
+  as a distractor the other tasks must not be confused with.
+
+The PCA-space columns are the ones to read; UMAP is stochastic and its silhouettes reward the tight strands
+it draws. A set whose accuracy and per-task recall do not move has added channels without adding task
+structure in the raw space; that does not rule out a learned model finding something, but it is the cheap check."""),
+            code("""from _umap_exploration import sensor_window_sets, separability, FEATURE_SETS
+sets = sensor_window_sets(SPLIT, tuple(FEATURE_SETS), max_points=MAX_POINTS, seed=VIEW_SEED)
+assert np.array_equal(sets['thigh']['source_index'], windows['source_index']), 'the variant must reuse the rows plotted above'
+for name, s in sets.items():
+    print(f"{name:13s} {len(s['channels']):2d} channels; 50 PCs keep {s['explained']:.1%} of the flattened-window variance")
+if sets['thigh']['dropped']:
+    print(f"{sets['thigh']['dropped']} windows dropped from every set: NaN in their pelvis channels")
+variant_views = {}
+for name in ('pelvis', 'thigh+pelvis'):
+    s = sets[name]
+    variant_views[name] = feature_views(s['features'], s['meta'], np.arange(len(s['meta'])),
+                                        dims=VIEW_DIMS, projections=PROJECTIONS,
+                                        title=f'Sensor windows ({SPLIT}), {name}',
+                                        cache_key=f"sensor_{SPLIT}_{name.replace('+', '_')}", seed=VIEW_SEED,
+                                        max_points=None, save_html=SAVE_HTML, fitted_on='all sampled windows',
+                                        pca_variance_scale=s['explained'])"""),
+            md("""### Task separability by channel set
+
+Rows are (channel set, held-out unit); the first two columns are the numbers to read. `per_task` gives the
+PCA-space recall of each task under each scheme, so a gain (or loss) can be traced to the tasks it comes from."""),
+            code("""views = {'thigh': all_task_views, **variant_views}
+summary, per_task = separability({name: dict(features=sets[name]['features'],
+                                             umap={d: v[d]['points']['umap'] for d in v})
+                                  for name, v in views.items()}, sets['thigh']['meta'], k=15, seed=VIEW_SEED)
+display(summary.round(3))
+display(per_task.round(3))"""),
+            code("source_links(['ml/LOTO/splits.py', 'ml/LOTO/build_data.py', 'ml/vanilla/dataset.py', 'notebooks/model_exploration/_umap_exploration.py'])")]
+
+
 def existing_notebook(s):
     cells=[md(f"# {s['title']}\n\n{s['question']}\n\nRead top-to-bottom: setup → equations → architecture → training → figures → LOTO → interpretation.\n**Safe default:** saved-result exploration only; training is disabled."),
            code(SETUP),code(f"KEY = {s['key']!r}\nRUN = ROOT / RUNS[KEY]\ninventory(RUN)"),
@@ -268,18 +508,87 @@ def existing_notebook(s):
            md('## Saved test results\n\nThese values come directly from `eval_test.json`. An optimized test-ROC threshold, where reported, is diagnostic—not a validated operating point.'),
            code('results_table(RUN)'),md('## Model behavior through figures\n\nImages are embedded from the existing run, without rewriting it. Captions explain what each figure can and cannot establish.'),
            code(f"gallery(RUN, {s['gallery']!r})"),
+           *(ae_umap_cells() if s.get('extra')=='ae_umap' else []),
            md('## Leave-one-task-out (LOTO) stress test\n\nSA: stair ascent; ST: standing; TR: transitions. Each run excludes the named task from **all training participants**, trains on the other six, and tests on held-out participants. This differs from LOSO epoch selection.\n\nStanding test data come from one trial of one participant: 621 overlapping windows, or 600 for the gait-phase subset. Gait-phase LOTO uses fewer labelled windows overall. Raw window counts are not independent repetitions; cross-run changes do not isolate a causal training effect.'),
-           code('loto_results(KEY)'),md('## Takeaway and next checks\n\n'+s['takeaway']+'\n\nKeep score/threshold selection on validation data. Report both ranking and recall at a declared false-alarm budget, repeat seeds, and quantify participant/trial-level variation before making robustness claims.'),
+           code('loto_results(KEY)'),*loto_spread_cells(s['key']),md('## Takeaway and next checks\n\n'+s['takeaway']+'\n\nKeep score/threshold selection on validation data. Report both ranking and recall at a declared false-alarm budget, repeat seeds, and quantify participant/trial-level variation before making robustness claims.'),
            code(f"source_links({s['sources']!r})")]
     return cells
+
+
+def vae_sweep_cells():
+    return [md(r"""## β sweep, controls and the dimension question (original protocol)
+
+The variance result settled one thing: posterior width does not track the task, so σ² and KL
+cannot be OOD scores for this model. It left two competing explanations for β=4 beating β=1,
+and they lead to different next steps:
+
+- **Dimension.** β=4 switched off 14 of 32 latent dimensions. If LOF simply works better in 18
+  dimensions than in 32, the fix is a narrower bottleneck, VAE or not.
+- **Regularization.** If the KL term shapes the code, pushing β higher should keep helping until
+  too much collapses, giving an inverted U.
+
+Three pieces of evidence, all selected on the **validation** split (test is shown, never used to choose):
+
+1. **Post hoc, no retraining** (`ml/VAE/posthoc_dims.py`): LOF refitted on the same 50,000 training
+   latents, on all 32 coordinates, on the *active* coordinates only, and on PCA-reduced coordinates
+   with k ∈ {8, 12, 16, 18, 24}, for both VAE runs and the AE baseline. If the AE gains at 16-18, the
+   story is dimension.
+2. **β sweep** (`ml/VAE/slurm/sweep.sbatch`): β ∈ {0.25, 1, 2, 4, 8, 16, 32}, with the active-dimension
+   count per cell (median posterior σ² < 0.9 on ID validation windows).
+3. **Controls**: β=0 with sampling off is the AE objective through this pipeline. `ae_control` keeps the
+   VAE optimizer settings (lr 0.001, batch 256, ≤50 epochs); `ae_control_aehp` uses the AE's (lr 0.003,
+   batch 1,024, ≤200 epochs). Near the AE's 0.782 means the pipeline is fine and the Gaussian latent costs
+   the difference; near 0.65-0.71 means the hyperparameters are the cause.
+
+Seeds 1-2 are added to the winning β before any claim (`ml/VAE/slurm/seeds.sbatch`); a difference of a
+few hundredths is inside seed noise. Tables and figures are written to `ml/VAE/results/` by the two
+scripts and read here; missing files simply print as unavailable.
+"""),
+    code("""from vae_sweep import summarize, RESULTS
+from IPython.display import Image
+sweep = summarize('original')
+if sweep.empty:
+    print('No completed original-protocol runs found under ml/VAE/runs.')
+else:
+    cols = ['variant', 'seed', 'beta', 'sampling', 'best epoch', 'val KL', 'active dims', 'KL per active dim',
+            'val AUROC (LOF)', 'test AUROC (LOF)', 'test recall %', 'test false alarms %', 'val AUROC (KL)', 'hours']
+    display(sweep[cols].round(4).style.hide(axis='index'))
+    seeds = sweep[sweep['seed'] > 0]
+    if not seeds.empty:
+        rep = sweep[sweep['variant'].isin(seeds['variant'].unique())].groupby('variant')[['val AUROC (LOF)', 'test AUROC (LOF)']]
+        display(Markdown('**Seed repeats (mean ± sd, n = seeds):**'))
+        display(rep.agg(['mean', 'std', 'count']).round(4))
+    if (RESULTS / 'sweep_original.png').exists():
+        display(Image(filename=str(RESULTS / 'sweep_original.png'), width=950))
+    else:
+        print('Run `python ml/VAE/vae_sweep.py --protocol original --write` to draw the sweep figure.')"""),
+    md('### Posterior means of every sweep run, side by side\n\n'
+       'One UMAP panel per run (every β and both controls, seed 0), the test-set posterior means coloured by task. '
+       'Each panel is **its own embedding**, fitted on that run\'s training reference means, so orientation and scale '
+       'are not comparable across panels; what is comparable is structure: which tasks sit apart, which overlap, and '
+       'how the layout changes as β grows and dimensions switch off. Panel titles carry the validation LOF AUROC and '
+       'the active-dimension count. In 3-D one scene has a run selector.'),
+    code("""from _umap_exploration import sweep_mean_views
+SWEEP_RUNS = sorted(p for p in (ROOT / 'ml/VAE/runs').glob('original_*_seed0') if not p.name.endswith('_smoke'))
+sweep_views = sweep_mean_views(SWEEP_RUNS, dims=VIEW_DIMS, max_points=4_000, seed=VIEW_SEED, save_html=SAVE_HTML)"""),
+    code("""posthoc = RESULTS / 'posthoc_dims.csv'
+if posthoc.exists():
+    table = pd.read_csv(posthoc)
+    display(Markdown('**LOF in fewer dimensions (post hoc, LOF refitted; select on validation):**'))
+    display(table.round(4).style.hide(axis='index'))
+else:
+    print('Run `python ml/VAE/posthoc_dims.py --write` to create ml/VAE/results/posthoc_dims.csv.')""")]
 
 
 def vae_notebook():
     return [md('''# VAE exploration: standard VAE and β-VAE
 
-**Status: new notebook-local prototypes, not completed benchmark results.** No production
-VAE existed in this checkout at notebook creation. This notebook includes executable setup,
-loss, opt-in training and evaluation. Variants share architecture; only the KL weight changes.
+**Status: notebook-local prototypes with one completed seed-0 run per cell** (standard and
+β=4, each under the original protocol and the SA/ST/TR holdouts), trained on the FASRC cluster
+via `ml/VAE/slurm/` and pulled into `ml/VAE/runs/`. The package is `ml/VAE/`, beside `ml/vanilla`
+and `ml/prob_ensemble`; it is not registered in the vanilla CLI. Single
+seed: read the numbers as a first pass, not a benchmark. Variants share architecture; only the
+KL weight changes.
 
 Question: does probabilistic latent regularization improve upon **AE + LOF**, not merely
 produce a better reconstruction or a more attractive latent plot?'''),
@@ -308,8 +617,10 @@ produce a better reconstruction or a more attractive latent plot?'''),
     A near-zero KL can indicate latent collapse; latent variance is not automatically epistemic OOD uncertainty.
     '''),
     code("diagram([['Sensor window\\n16 × 200','Shared conv trunk\\n24 × 8','μ and log variance\\neach 4 × 8','Sample z, then decode\\n16 × 200'], ['Posterior mean μ\\nflatten to 32','Fit LOF on\\nID training means','Score new windows\\nLOF(μ)','Same smoothing\\nand threshold rule']], 'Standard / beta VAE: representation and detection are separate')"),
-    md('### Executable model and loss\n\nThe implementation is local to this notebook folder. It is not silently added to the production registry. The next pass uses random weights and dummy inputs only.'),
-    code('''from _vae_experiment import ConvVAE, VAEConfig, loss_terms, train_experiment, plot_representation
+    md('### Executable model and loss\n\nThe implementation lives in `ml/VAE/` (`vae_model.py`, `vae_train.py`, `vae_plots.py`), alongside the other model packages, and is not registered in the vanilla CLI. The next pass uses random weights and dummy inputs only.'),
+    code('''from vae_model import ConvVAE, loss_terms
+from vae_train import VAEConfig, train_experiment
+from vae_plots import plot_representation
 model = ConvVAE()
 x = torch.zeros(2, 16, 200)
 rec, mu, logvar = model_shapes(model, x)
@@ -341,13 +652,14 @@ Do not call these scores calibrated OOD probabilities or choose a different winn
 - To compare variants, keep the seed/splits fixed; repeat with seeds 0, 1, 2 before conclusions.
   For a fair new operating-point comparison, recalibrate **both** AE and VAE on the same
   validation-ID false-alarm budget. The prototype first reproduces the existing training-percentile rule.
-- The optional window cap is a **smoke test**, not a benchmark. No training is run by default.
+- The optional window cap is a **smoke test**, not a benchmark. No training is run by default;
+  the cluster matrix is `ml/VAE/slurm/submit.sh` and results are pulled with `ml/VAE/slurm/pull.sh`.
 '''),
     code('''HELD_OUT = None  # None, 'SA', 'ST', 'TR'
 SEED = 0
 VARIANTS = {'standard': 1.0, 'beta4': 4.0}
 protocol = HELD_OUT or 'original'
-VAE_RUNS = {name: ROOT / 'notebooks/model_exploration/runs/vae' / f'{protocol}_{name}_seed{SEED}'
+VAE_RUNS = {name: ROOT / 'ml/VAE/runs' / f'{protocol}_{name}_seed{SEED}'
             for name in VARIANTS}
 configs = {name: VAEConfig(beta=beta, seed=SEED, held_out=HELD_OUT)
            for name, beta in VARIANTS.items()}
@@ -366,6 +678,9 @@ else:
     config_and_history(out)
     results_table(out)
     plot_representation(out)'''),
+    *vae_umap_cells(),
+    *vae_sweep_cells(),
+    *vae_loto_spread_cells(),
     md('''## Read the experiment, not just the pictures
 
 1. Do LOF scores improve over the existing AE at a comparable false-alarm rate, consistently across seeds?
@@ -382,7 +697,7 @@ An attractive PCA plot, better likelihood, or a single favorable AUROC is not a 
 
 ## Sources and further reading
 
-- [Notebook-local implementation](_vae_experiment.py); [AE baseline](../../ml/vanilla/models/autoencoder.py).
+- [VAE package](../../ml/VAE/README.md): [model](../../ml/VAE/vae_model.py), [training and CLI](../../ml/VAE/vae_train.py); [AE baseline](../../ml/vanilla/models/autoencoder.py).
 - [Kingma & Welling: Auto-Encoding Variational Bayes](https://arxiv.org/abs/1312.6114).
 - [Nalisnick et al.: generative likelihood can fail at OOD detection](https://arxiv.org/abs/1810.09136).
 - [Higgins et al.: beta-VAE](https://openreview.net/forum?id=Sy2fzU9gl).
@@ -391,23 +706,401 @@ Literature findings motivate this experiment; they do not establish performance 
 ''')]
 
 
+def awareness_notebook():
+    return [md("""# Awareness layer under a regime holdout
+
+**Question.** A controller needs three answers per window, not one: is this movement
+*unfamiliar* (novelty), *which regime* does it resemble (regime), and *can the active prediction
+be trusted* (reliability)? This notebook computes those three signals from one sensor window and
+lays them out side by side, per task, under a holdout that removes an **entire regime** from
+training: `DOWN` holds out ramp descent, stair descent, standing and transitions, so training sees
+level ground, ramp ascent and stair ascent only. The six existing models are run under the same
+holdout for a model-by-model comparison.
+
+Code and tracked results live in [`ml/awareness/`](../../ml/awareness/README.md); nothing here
+trains. Scores are shown as **spreads by task with no thresholds**: this is the raw material for
+deciding what to fuse, not a detector.
+
+Read top-to-bottom: split → encoder and novelty → regime probes → forecaster → baselines → all
+scores by task."""),
+    code(SETUP),
+    md(r"""## The holdout
+
+`ml/LOTO/splits.py` names a holdout by the **set** of modes it removes. `DOWN` = {RD, SD, ST, TR}.
+Participants, scaler, causal median filter (ten scores) and evaluators are the ones every other
+run uses, so all rows below are computed on identical test windows: ID = LG, RA, SA of the four
+test participants; OOD = the four held-out modes of the same participants.
+
+$$\widetilde\Psi_t=\operatorname{median}(\Psi_{t-9},\ldots,\Psi_t)\qquad\text{for every score below.}$$
+
+AUROC (OOD versus ID, and each held-out mode alone versus ID) is reported because it is a ranking
+statistic with no threshold in it. Nothing in this notebook chooses an operating point."""),
+    code("""from splits import build, held_out_modes, trained_modes
+HOLDOUT = 'DOWN'
+print('held out:', held_out_modes(HOLDOUT), ' trained on:', trained_modes(HOLDOUT))
+_d = build('autoencoder', HOLDOUT, batch_size=256)
+rows = []
+for name in ('train', 'val', 'test'):
+    by = _d.splits[name].meta.groupby('mode').size().to_dict()
+    rows.append({'split': name, 'kind': 'ID', **by, 'total': len(_d.splits[name])})
+    if name in _d.ood:
+        by = _d.ood[name].meta.groupby('mode').size().to_dict()
+        rows.append({'split': name, 'kind': 'OOD', **by, 'total': len(_d.ood[name])})
+display(pd.DataFrame(rows).fillna(0).astype({c: int for c in ('total',)}).set_index(['split', 'kind']))
+AW = ROOT / 'ml/awareness'
+RUNS_AW = AW / 'runs' / HOLDOUT
+RESULTS_AW = AW / 'results' / HOLDOUT"""),
+    md(r"""## Stage A: encoder and novelty
+
+The encoder is `ml/VAE`'s deterministic configuration: the AE trunk with a **linear** 4×8 latent
+head, trained on the unit-variance Gaussian NLL with β=0 and no sampling, at the AE's settings
+(learning rate 0.003, batch 1,024, up to 200 epochs, patience 5, participant-disjoint early
+stopping). Under the original protocol it gave the best latent-LOF ranking of anything tried
+(test AUROC 0.822 against the vanilla AE's 0.782), which is why it is the encoder here.
+
+$$z=E_\theta(x)\in\mathbb R^{32},\qquad \Psi_{\rm nov}(x)=\operatorname{LOF}_{20}(z)\ \text{fitted on 50,000 ID training latents},$$
+
+and the same LOF refitted on 12 and 16 principal components of the same reference, since fewer
+dimensions helped every model in the earlier post-hoc check. Reconstruction NLL is kept as a
+separate diagnostic (it ranked OOD *below* ID under the original protocol)."""),
+    code("""ENC = RUNS_AW / 'encoder'
+inventory(ENC)
+config_and_history(ENC)
+results_table(ENC)"""),
+    md("""### Interactive views of the encoder's test latents
+
+UMAP and PCA fitted on **in-distribution** test latents (LG, RA, SA), every task transformed in;
+the third panel is raw latent coordinates. Task colours are fixed; the four held-out modes are
+simply the four tasks the encoder never saw. In 3-D one scene has a projection selector.
+""" + UMAP_HOWTO),
+    code("""from _umap_exploration import ae_latent_views
+VIEW_DIMS = (2, 3)
+PROJECTIONS = ('umap', 'pca', 'latent')
+LATENT_DIMS = None
+MAX_POINTS = 12_000
+VIEW_SEED = 0
+SAVE_HTML = True
+if (ENC / 'latents_test.npz').exists():
+    enc_views = ae_latent_views(ENC, dims=VIEW_DIMS, projections=PROJECTIONS, latent_dims=LATENT_DIMS,
+                                max_points=MAX_POINTS, seed=VIEW_SEED, save_html=SAVE_HTML)
+else:
+    print('Encoder run not pulled yet:', ENC)"""),
+    md(r"""## Stage B: regime probes
+
+Two probes read the same latent, trained on the **training split's task labels mapped to regimes**
+(LG → level; RA, SA → ascend). Under `DOWN` those are the only two regimes, so a held-out window can
+never be named "descend"; what is recorded is the probe's probabilities, its confidence (max
+probability) and its entropy:
+
+$$H(x)=-\sum_c p_c(x)\log p_c(x).$$
+
+`logistic` is the linear probe (is regime linearly readable from the latent?); `mlp` (two hidden
+layers of 64) is the comparison. Accuracy is meaningful only on ID windows; on the held-out modes
+the interesting numbers are mean entropy and which known regime absorbs them."""),
+    code("""REG = RUNS_AW / 'regime'
+for probe in ('logistic', 'mlp'):
+    f = REG / f'{probe}_summary.json'
+    if not f.exists():
+        print(probe, 'not available yet'); continue
+    summary = read_json(f)
+    display(Markdown(f'### {probe} probe — classes {summary["classes"]}, trained on {summary["n_train"]:,} latents'))
+    acc = {k: v['accuracy'] for k, v in summary.items() if isinstance(v, dict) and 'accuracy' in v}
+    display(pd.Series(acc, name='accuracy on windows with a known regime').to_frame().round(4))
+    rows = []
+    for key in ('test_id', 'test_ood'):
+        for mode, r in summary[key]['by_mode'].items():
+            rows.append({'split': key, 'mode': mode, 'windows': r['windows'], 'mean entropy': r['mean_entropy'],
+                         'mean confidence': r['mean_confidence'], **{f'predicted {c}': v for c, v in r['predicted_share'].items()}})
+    display(pd.DataFrame(rows).set_index(['split', 'mode']).round(3))"""),
+    md(r"""## Stage C: the 200 ms hip-angle forecast ensemble
+
+The seven-TCN forecast ensemble of Experiment 5, driven through `ml/vanilla/main.py` exactly as the
+LOTO runner drives it, twice: **plain** (16 sensor channels) and **regime-conditioned** (16 channels
+plus the logistic probe's two class probabilities as constant channels). Branch disagreement $A$ is
+available immediately; the realized error $E$ of the ensemble mean, and the mean branch error
+$\bar E$, exist 200 ms later:
+
+$$E=\bar E-A\qquad\text{(Krogh–Vedelsby, exact per window).}$$
+
+On a held-out window the regime input is whichever known regime the probe assigned, with its
+confidence; the forecast target itself is unchanged. The first pass uses one leave-one-subject-out
+fold for epoch selection (`--folds 1`) instead of twelve, to get a result back in an hour."""),
+    code("""for variant in ('plain', 'regime'):
+    run = RUNS_AW / f'forecast_{variant}'
+    display(Markdown(f'### forecast_{variant}'))
+    inventory(run)
+    config_and_history(run)
+    results_table(run)"""),
+    md(r"""## Stage C′: regime experts, so the regime cannot be ignored
+
+The conditioned forecaster turned out not to *use* its regime channels. The swap test below feeds
+it the wrong regime on every window: on in-distribution windows the median realized error moves by
+only a few percent, and on the held-out modes a wrong label even lowers it. On training data the
+regime is already readable from the raw signal, so two constant input channels were never
+load-bearing, and at test time a wrong value costs nothing.
+
+Experts make the dependence structural. One ensemble is trained **per regime present in training**,
+on that regime's windows only (`level` on LG, `ascend` on RA and SA); at inference the logistic
+probe routes each window to an expert. A window from an unseen regime is routed to an expert that
+never saw its dynamics, so its error rises by construction, and a new quantity appears: the
+disagreement between the experts' mean forecasts.
+
+$$E_{\rm routed}(x)=E_{c^*(x)}(x),\quad c^*(x)=\arg\max_c p_c(x);\qquad
+E_{\min}(x)=\min_c E_c(x);\qquad
+\Delta(x)=\big\|\bar f_{\rm level}(x)-\bar f_{\rm ascend}(x)\big\|^2/D.$$
+
+Each expert sees roughly half the training windows, which is the price of this design."""),
+    code("""swap = RESULTS_AW / 'regime_swap_test.csv'
+if swap.exists():
+    display(Markdown('**Swap test on the regime-conditioned forecaster** (median realized error per mode, true versus swapped regime input):'))
+    display(pd.read_csv(swap, index_col=0).round(4))
+else:
+    print('Run `python ml/awareness/experts.py swap-test --holdout DOWN` to create', swap.name)
+for regime in ('level', 'ascend'):
+    run = RUNS_AW / f'expert_{regime}'
+    display(Markdown(f'### expert_{regime}'))
+    inventory(run)
+    config_and_history(run)
+    results_table(run)
+summary = RUNS_AW / 'experts' / 'summary.json'
+if summary.exists():
+    s = read_json(summary)
+    display(Markdown('**Expert scores, test AUROC (OOD versus ID), and the share of windows routed to each expert:**'))
+    display(pd.Series({k: v for k, v in s.items() if isinstance(v, float)}, name='AUROC').to_frame().round(4))
+    display(pd.Series(s['routed_share'], name='routed share').to_frame().round(3))
+else:
+    print('Expert scores not computed yet: pull both experts, then `python ml/awareness/experts.py score --holdout DOWN`.')"""),
+    md("""## The six existing models under the same holdout
+
+Each row is one LOTO leaf, `ml/LOTO/DOWN/<model>`, trained on LG/RA/SA and scored on the same test
+windows. AUROC is ranking; recall and false alarms are at each model's own training-percentile
+threshold and are shown for completeness only."""),
+    code("""rows = []
+for leaf in ('vanilla/AE', 'vanilla/GAN', 'vanilla/Ensemble_GP', 'vanilla/Ensemble_synthetic', 'vanilla/Ensemble_forecast', 'prob_ensemble/run'):
+    r = read_json(ROOT / 'ml/LOTO' / HOLDOUT / leaf / 'eval_test.json')
+    if not r:
+        rows.append({'model': leaf, 'status': 'not finished'}); continue
+    for score, m in r.get('scores', {'primary': r.get('metrics', {})}).items():
+        rows.append({'model': leaf, 'score': score, 'AUROC': m.get('auroc'), 'recall %': m.get('recall'),
+                     'ID false alarms %': 100 - m.get('specificity', 100), 'status': 'done'})
+display(pd.DataFrame(rows).round(4))"""),
+    md("""## Every score, by task
+
+`ml/awareness/aw_scores.py` aligns every per-window score to the same test windows (the gait-phase
+ensemble keeps its own labelled window set) and `aw_plots.py` draws one violin per task per score:
+**orange = never seen in training, blue = trained on**. Black bars are the interquartile range, the
+tick the median; axes span the central 99.6 % of all windows. The table gives per-mode medians and
+threshold-free AUROCs. Set `RECOMPUTE_SCORES = True` to rebuild both from the pulled runs (a few
+minutes: LOF refits and the forecast error decomposition from the checkpoints); otherwise the
+tracked files under `ml/awareness/results/` are shown."""),
+    code("""from IPython.display import Image
+RECOMPUTE_SCORES = False
+if RECOMPUTE_SCORES:
+    import aw_scores, aw_plots
+    ss = aw_scores.collect(HOLDOUT)
+    summary = aw_scores.summarize(ss)
+    aw_scores.write(ss, summary); aw_plots.all_groups(ss)
+csv = RESULTS_AW / 'score_summary.csv'
+if csv.exists():
+    summary = pd.read_csv(csv)
+    auc_cols = [c for c in summary.columns if c.startswith('AUROC')]
+    display(summary[['score', 'windows', *auc_cols]].round(4).style.hide(axis='index'))
+    display(Markdown('**Per-mode medians (each score in its own units):**'))
+    display(summary[['score'] + [c for c in summary.columns if c.startswith('median ')]].round(4).style.hide(axis='index'))
+    for group in ('novelty', 'regime', 'forecast', 'experts', 'baselines'):
+        png = RESULTS_AW / f'spread_{group}.png'
+        display(Markdown(f'### {group}'))
+        display(Image(filename=str(png), width=1000)) if png.exists() else print('not available yet:', png.name)
+else:
+    print('No tracked results yet:', csv)"""),
+    md(r"""## Making the dangerous cells fire: injected sensor faults
+
+The held-out regime under `DOWN` turned out to be the **OOD-safe** case: unfamiliar to LOF, confidently
+routed to a known regime, and still forecast acceptably. Nothing in the dataset is dangerous, so the
+other cell of the novelty × health grid is populated here by construction: level-ground test windows
+with a sensor fault injected into the **input only** (dead left-thigh IMU, a frozen right-thigh IMU, IMU noise at twice each channel's spread, gyro spikes, a 100 ms left-leg
+delay), persistently across whole trials so the causal median filter behaves as in deployment. The
+forecast target is the true future encoder reading, so realized error measures what the corrupted
+input does to the prediction. A constant encoder offset is deliberately not among them: it is a
+calibration error rather than a dynamic fault, and the future reading would carry the same bias.
+
+The same five faults are applied to ramp-descent windows too, so all four cells of the grid exist
+on the same participants: **ID-safe** (level ground), **ID-dangerous** (level ground + fault),
+**OOD-safe** (ramp descent), **OOD-dangerous** (ramp descent + fault). Every window goes through
+the same pipeline: LOF on the encoder latent, reconstruction NLL, the regime probe, the unrouted
+forecast ensemble and the **routed regime experts**, whose error is the health axis in the
+quadrant figure so that the regime has its say. AUROCs are against ID-safe and against OOD-safe."""),
+    code("""fs = RESULTS_AW / 'faults_summary.csv'
+if fs.exists():
+    fsum = pd.read_csv(fs)
+    keys = ['novelty_lof32', 'recon_nll', 'regime_entropy', 'forecast_disagreement', 'forecast_error', 'expert_routed_error']
+    for against in ('ID-safe', 'OOD-safe'):
+        cols = [f'AUROC vs {against}: {k}' for k in keys if f'AUROC vs {against}: {k}' in fsum]
+        display(Markdown(f'**AUROC of each condition against {against}** (0.5 = indistinguishable; a cell is blank against itself):'))
+        display(fsum[['condition', 'windows', *cols]].rename(columns=lambda c: c.replace(f'AUROC vs {against}: ', '')).round(3).style.hide(axis='index'))
+    for name in ('faults_spread.png', 'faults_quadrants.png'):
+        png = RESULTS_AW / name
+        display(Image(filename=str(png), width=1000)) if png.exists() else print('missing', name)
+else:
+    print('Run `python ml/awareness/faults.py --holdout DOWN --write` to create', fs.name)"""),
+    md("""### The four cells in three dimensions
+
+Novelty (LOF on the encoder latent), the **autoencoder's reconstruction error** (the decoder's NLL
+of the window, not a forecast) and the **routed expert forecast error** as three axes, all log10.
+Pick a fault with the selector; each cell keeps its colour. Rotate to see that the dangerous cells
+leave the safe ones along the reconstruction axis while the forecast-error axis mostly does not
+separate them."""),
+    code("""import plotly.graph_objects as go
+from _umap_exploration import show, PLOTLY_CONFIG
+fsc = RESULTS_AW / 'faults_scores.parquet'
+if fsc.exists():
+    fdf = pd.read_parquet(fsc)
+    cells = {'ID-safe': ('#287da8', 'circle'), 'OOD-safe': ('#dd791a', 'square'), 'ID-dangerous': ('#a32d2d', 'cross'), 'OOD-dangerous': ('#4a3aa7', 'diamond')}
+    axes3 = ('novelty_lof32', 'recon_nll', 'expert_routed_error')
+    faults = sorted({c[c.index('+ ') + 2:c.rfind(' (')] for c in fdf.condition.unique() if '+' in c})
+    rng = np.random.default_rng(0); fig = go.Figure(); groups = []; ranges = []
+    CLIP = (0.5, 99.5)   # axis ranges span this percentile band of the plotted points; nothing is dropped from the tables
+    for fi, fault in enumerate(faults):
+        conds = {'ID-safe': 'LG (ID-safe)', 'OOD-safe': 'RD (OOD-safe)',
+                 'ID-dangerous': f'LG + {fault} (ID-dangerous)', 'OOD-dangerous': f'RD + {fault} (OOD-dangerous)'}
+        idx, shown = [], []
+        for cell, cond in conds.items():
+            g = fdf[fdf.condition == cond]; pick = rng.choice(len(g), min(1500, len(g)), replace=False); g = g.iloc[pick]
+            color, symbol = cells[cell]
+            xyz = np.log10(g[list(axes3)].to_numpy()); shown.append(xyz)
+            fig.add_trace(go.Scatter3d(x=xyz[:, 0], y=xyz[:, 1], z=xyz[:, 2], mode='markers',
+                                       name=cell, visible=(fi == 0), legendgroup=cell, showlegend=True,
+                                       marker=dict(size=2.4, color=color, symbol=symbol, opacity=.55),
+                                       text=g['subject'] + ' · ' + g['trial'], hovertemplate='%{text}<extra>' + cell + '</extra>'))
+            idx.append(len(fig.data) - 1)
+        groups.append(idx)
+        allpts = np.concatenate(shown); lo, hi = np.percentile(allpts, CLIP[0], axis=0), np.percentile(allpts, CLIP[1], axis=0)
+        pad = .05 * (hi - lo); ranges.append([[float(l - p), float(h + p)] for l, h, p in zip(lo, hi, pad)])
+    def layout_for(fi, fault):
+        r = ranges[fi]
+        return {'title.text': f'Four cells, fault: {fault}  (axes clipped to the central {CLIP[1] - CLIP[0]:.0f} % of plotted windows)',
+                'scene.xaxis.range': r[0], 'scene.yaxis.range': r[1], 'scene.zaxis.range': r[2]}
+    buttons = [dict(label=fault, method='update', args=[{'visible': [i in set(groups[fi]) for i in range(len(fig.data))]}, layout_for(fi, fault)])
+               for fi, fault in enumerate(faults)]
+    fig.update_layout(title=layout_for(0, faults[0])['title.text'], template='plotly_white', height=680, margin=dict(l=0, r=0, t=90, b=0),
+                      scene=dict(xaxis=dict(title='log10 LOF novelty', range=ranges[0][0]), yaxis=dict(title='log10 AE reconstruction NLL', range=ranges[0][1]),
+                                 zaxis=dict(title='log10 routed expert forecast error', range=ranges[0][2]), aspectmode='cube'),
+                      updatemenus=[dict(type='dropdown', x=0, xanchor='left', y=1.1, yanchor='top', buttons=buttons)],
+                      legend=dict(title='cell (click to hide, double-click to isolate)', itemsizing='constant'))
+    show(fig, 'faults_four_cells_3d', SAVE_HTML)
+else:
+    print('No fault scores yet:', fsc)"""),
+    md("""## What other targets could make the regime matter? A label inventory
+
+Regime conditioning failed because the 200 ms hip-angle target is locally continuous and
+therefore regime-insensitive. The raw trials carry more than the 16 channels: inverse-kinematics
+joint angles, inverse-dynamics **joint moments**, per-leg gait phase from heel strike and toe off,
+ground reaction forces and a pelvis IMU. `ml/awareness/results/dataset_labels.md` inventories them
+and their coverage; the table below is the per-mode coverage of the sampled trials. Gait phase and
+moments are valid on exactly the samples where a force plate was struck, and stairs carry one or
+two labelled strides per short trial. Candidate regime-dependent targets: the coming stride's
+duration, stance fraction, hip flexion/extension peaks (available from the encoder itself, no lab
+labels needed), and the hip moment, which is also the fallback controller's own quantity."""),
+    code("""cov = AW / 'results' / 'dataset_label_coverage.csv'
+if cov.exists():
+    lab = pd.read_csv(cov)
+    display(lab.groupby('mode').agg(trials=('trial', 'size'), seconds=('seconds', 'median'),
+        gait_phase_valid_L=('gp_valid_l', 'mean'), gait_phase_valid_R=('gp_valid_r', 'mean'),
+        strides_L=('strides_l', 'median'), stride_time_s=('stride_s_l', 'median'),
+        moment_valid_L=('moment_valid_l', 'mean'), hip_range_rad=('hip_range_l', 'median')).round(3))
+else:
+    print('No coverage table yet:', cov)"""),
+    md("""## How to read this, and what comes next
+
+- **Novelty** answers "is this unlike LG/RA/SA?". The held-out modes should sit to the right of the
+  trained-on ones; how far, and whether standing and transitions behave like the descents, is what
+  the violins show.
+- **Regime** cannot say "descend". Watch whether entropy rises on RD/SD relative to ID, and which
+  known regime absorbs them; a confident wrong assignment is itself a finding.
+- **Reliability** is two axes: disagreement now, realized error later. Their joint reading
+  (confident and wrong) is the one a single score cannot express.
+- **Baselines** show where each existing model's score puts the same windows.
+
+No score is thresholded here. Fusion, thresholds at a declared false-alarm budget, seeds and the
+other regime holdouts (ascending, level) are the next steps, in that order."""),
+            md(r"""## Ablation: the pelvis IMU as six more input channels
+
+Notebook 09's raw-space check said the pelvis IMU adds almost no task structure (k-NN task accuracy
+0.600 → 0.615 with participants held out). The question that matters here is different: does a
+learned encoder get anything out of it for **novelty** under the regime holdout? So Stage A and
+Stage B are rerun unchanged on a 22-channel build of the same windows
+(`ml/LOTO/build_data.py --channels pelvis`: the 16 channels with the *same* scaler numbers, plus
+`pelvis_accel_xyz` and `pelvis_gyro_xyz` with their own LG/RA/RD-training scaler). Same β = 0 encoder,
+same settings and seed, same LOF reference size, same test windows; the arrays were cut on the cluster
+from the raw trials (`ml/awareness/slurm/pelvis_build.sbatch`) and the runs sit beside the 16-channel
+ones as `encoder_pelvis/` and `regime_pelvis/`.
+
+Read the table as a paired comparison: every AUROC is on the identical windows, so a difference of a
+few thousandths is seed noise and a difference on one held-out mode is where to look."""),
+            code("""pa = RESULTS_AW / 'pelvis_ablation.csv'
+if pa.exists():
+    pab = pd.read_csv(pa)
+    wide = pab.pivot(index='score', columns='encoder', values=[c for c in pab.columns if c.startswith('AUROC')])
+    wide.columns = [f'{a.replace("AUROC ", "")} · {b.split(" ")[0]} ch' for a, b in wide.columns]
+    display(wide.loc[['LOF, 32-D latent', 'LOF, PCA-12', 'LOF, PCA-16', 'reconstruction NLL']].round(3))
+    display(pd.read_csv(RESULTS_AW / 'pelvis_ablation_runs.csv', index_col=0).round(3))
+    png = RESULTS_AW / 'pelvis_ablation.png'
+    display(Image(filename=str(png), width=1000)) if png.exists() else print('missing', png.name)
+else:
+    print('Run `python ml/awareness/pelvis_ablation.py --holdout DOWN --write` after pulling encoder_pelvis/ to create', pa.name)"""),
+            md("""### Interactive views of the 22-channel encoder's test latents
+
+The same construction as the 16-channel views in Stage A: UMAP and PCA fitted on the **in-distribution**
+test latents (LG, RA, SA) of `encoder_pelvis`, every task transformed in, raw latent coordinates in the
+third panel; same point budget and seed, task colours fixed. Compare with the Stage A views above: the
+question is whether the four held-out modes sit further from, or closer to, the trained-on gait once the
+pelvis IMU is in the input. The AUROC table says closer."""),
+            code("""ENC_PELVIS = RUNS_AW / 'encoder_pelvis'
+if (ENC_PELVIS / 'latents_test.npz').exists():
+    enc_pelvis_views = ae_latent_views(ENC_PELVIS, dims=VIEW_DIMS, projections=PROJECTIONS, latent_dims=LATENT_DIMS,
+                                       max_points=MAX_POINTS, seed=VIEW_SEED, save_html=SAVE_HTML,
+                                       title='22-channel encoder latent (32-D)')
+else:
+    print('Ablation run not pulled yet:', ENC_PELVIS)"""),
+    code("source_links(['ml/awareness/README.md', 'ml/awareness/encoder.py', 'ml/awareness/regime.py', 'ml/awareness/forecast.py', 'ml/awareness/experts.py', 'ml/awareness/faults.py', 'ml/awareness/aw_scores.py', 'ml/awareness/aw_plots.py', 'ml/LOTO/splits.py'])")]
+
+
 def notebooks():
     for spec in SPECS:
         yield spec['file']+'.ipynb',existing_notebook(spec)
     yield '08_vae_variants.ipynb',vae_notebook()
+    yield '09_umap_all_tasks.ipynb',all_tasks_notebook()
+    yield '10_awareness_regime_holdout.ipynb',awareness_notebook()
+
+
+def build(filename,cells):
+    for i,cell in enumerate(cells):
+        cell['id']=hashlib.sha256(f'{filename}:{i}:{cell.source}'.encode()).hexdigest()[:12]
+    return nbf.v4.new_notebook(cells=cells,metadata={
+        'kernelspec':{'display_name':'Hip Exo (.venv)','language':'python','name':'hip-exo'},
+        'language_info':{'name':'python','version':'3.12'},
+        'model_exploration':{'training_enabled_by_default':False}})
 
 
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('--patch',action='store_true',required=True)
-    parser.parse_args()
+    parser=argparse.ArgumentParser()
+    mode=parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument('--patch',action='store_true',help='print an apply_patch patch for every notebook')
+    mode.add_argument('--write',nargs='*',metavar='STEM',
+                      help='write notebooks directly (all, or the given stems such as 02_autoencoder_lof); '
+                           'saved outputs are dropped, so execute them again afterwards')
+    args=parser.parse_args()
+    if args.write is not None:
+        wanted={stem.removesuffix('.ipynb') for stem in args.write}
+        for filename,cells in notebooks():
+            if wanted and filename.removesuffix('.ipynb') not in wanted:continue
+            nbf.write(build(filename,cells),HERE/filename);print('Wrote',filename)
+        unknown=wanted-{f.removesuffix('.ipynb') for f,_ in notebooks()}
+        if unknown:raise SystemExit(f'Unknown notebook stems: {sorted(unknown)}')
+        return
     print('*** Begin Patch')
     for filename,cells in notebooks():
-        for i,cell in enumerate(cells):
-            cell['id']=hashlib.sha256(f'{filename}:{i}:{cell.source}'.encode()).hexdigest()[:12]
-        nb=nbf.v4.new_notebook(cells=cells,metadata={
-            'kernelspec':{'display_name':'Hip Exo (.venv)','language':'python','name':'hip-exo'},
-            'language_info':{'name':'python','version':'3.12'},
-            'model_exploration':{'training_enabled_by_default':False}})
+        nb=build(filename,cells)
         text=nbf.writes(nb)+'\n';path=HERE/filename
         if path.exists():
             print(f'*** Update File: {path}')

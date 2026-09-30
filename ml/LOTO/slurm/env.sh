@@ -80,7 +80,10 @@ stage_data_to_tmp() {
 
 # The matrix, flattened so an array index maps to one (model, held-out task) cell.
 # Order matters only for readability; the arrays below index into these.
-export LOTO_TASKS=(SA ST TR)
+# Which holdouts an array covers. Override per submission with a space-separated list, e.g.
+# HIPEXO_LOTO_TASKS="DOWN" (a regime holdout: RD SD ST TR out, LG RA SA in; see splits.py).
+read -r -a LOTO_TASKS <<< "${HIPEXO_LOTO_TASKS:-SA ST TR}"
+export LOTO_TASKS
 export LOTO_SINGLE=(vanilla/AE vanilla/GAN)                       # single-stage: 6 cells
 export LOTO_VANILLA_ENS=(vanilla/Ensemble_GP vanilla/Ensemble_synthetic vanilla/Ensemble_forecast)
 

@@ -235,3 +235,10 @@ research_updates/
 # prob_ensemble: cluster run outputs and SLURM logs
 ml/prob_ensemble/runs/
 ml/prob_ensemble/slurm/logs/
+# VAE: cluster run outputs and SLURM logs
+ml/VAE/runs/
+ml/VAE/slurm/logs/
+
+# awareness: cluster run outputs and SLURM logs
+ml/awareness/runs/
+ml/awareness/slurm/logs/

@@ -1,0 +1,111 @@
+{
+  "model": "autoencoder",
+  "split": "test",
+  "threshold": 1.3432248107208389,
+  "steepness": 23.542430387891283,
+  "metrics": {
+    "accuracy": 93.15050765303121,
+    "precision": 96.23829787234042,
+    "recall": 82.07882703055817,
+    "specificity": 98.46113673948994,
+    "f1": 88.5963881380499,
+    "j_statistic": 80.53996377004813,
+    "auroc": 0.9764113333712356,
+    "counts": {
+      "tp": 22616,
+      "fp": 884,
+      "tn": 56561,
+      "fn": 4938
+    },
+    "ece": 0.043541201090567916,
+    "brier": 0.05104510111160618,
+    "n_id": 57445,
+    "n_ood": 27554,
+    "pct_ood": 32.41685196296427
+  },
+  "per_mode": [
+    {
+      "mode": "LG",
+      "kind": "ID",
+      "windows": 28668,
+      "flagged_LOF_%": 1.9533975163945863,
+      "flagged_recon_%": 1.0046044370029301,
+      "median_psi": 1.1156941983663184,
+      "median_recon": 0.2970793545246124
+    },
+    {
+      "mode": "RA",
+      "kind": "ID",
+      "windows": 18504,
+      "flagged_LOF_%": 0.7349762213575443,
+      "flagged_recon_%": 0.0,
+      "median_psi": 1.1195448463470639,
+      "median_recon": 0.3076475113630295
+    },
+    {
+      "mode": "RD",
+      "kind": "OOD",
+      "windows": 14784,
+      "flagged_LOF_%": 83.32656926406926,
+      "flagged_recon_%": 0.0,
+      "median_psi": 1.4762304702034676,
+      "median_recon": 0.2972037345170975
+    },
+    {
+      "mode": "SA",
+      "kind": "ID",
+      "windows": 10273,
+      "flagged_LOF_%": 1.8300399104448557,
+      "flagged_recon_%": 0.0,
+      "median_psi": 1.091400817615749,
+      "median_recon": 0.2022431418299675
+    },
+    {
+      "mode": "SD",
+      "kind": "OOD",
+      "windows": 10155,
+      "flagged_LOF_%": 84.03741999015263,
+      "flagged_recon_%": 0.0,
+      "median_psi": 1.6299708206509598,
+      "median_recon": 0.2744634300470352
+    },
+    {
+      "mode": "TR",
+      "kind": "OOD",
+      "windows": 1994,
+      "flagged_LOF_%": 57.27181544633901,
+      "flagged_recon_%": 0.0,
+      "median_psi": 1.4084531461414307,
+      "median_recon": 0.114882692694664
+    },
+    {
+      "mode": "ST",
+      "kind": "OOD",
+      "windows": 621,
+      "flagged_LOF_%": 100.0,
+      "flagged_recon_%": 0.0,
+      "median_psi": 1.8466434325897858,
+      "median_recon": 0.05705263093113899
+    }
+  ],
+  "extra": {
+    "alternative_scores": {
+      "reconstruction_error": {
+        "accuracy": 67.2443205214179,
+        "precision": 0.0,
+        "recall": 0.0,
+        "specificity": 99.49865088345375,
+        "f1": 0.0,
+        "j_statistic": -0.5013491165462569,
+        "auroc": 0.4991664107605399,
+        "counts": {
+          "tp": 0,
+          "fp": 288,
+          "tn": 57157,
+          "fn": 27554
+        }
+      }
+    },
+    "latent_dim": 32
+  }
+}

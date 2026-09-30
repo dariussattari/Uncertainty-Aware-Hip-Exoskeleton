@@ -40,7 +40,7 @@ HERE = Path(__file__).resolve().parent
 REPO = next(d for d in HERE.parents if (d / "data").is_dir())
 sys.path.insert(0, str(HERE))
 
-from splits import ALL_MODES, DATA_ROOT, trained_modes     # noqa: E402
+from splits import ALL_MODES, DATA_ROOT, HOLDOUTS, held_out_modes, trained_modes     # noqa: E402
 
 # bundle basename -> the family whose test meta it should match
 BUNDLES = {"latents": "AE_GAN", "scores": "AE_GAN"}
@@ -70,12 +70,13 @@ def check_leaf(task: str, leaf: Path, split: str, counts: dict,
     name = leaf.relative_to(HERE / task).as_posix()
 
     # --- 1. the OOD class is the held-out task, and only that ---------------------------
+    out = sorted(held_out_modes(task))
     pm = r.get("per_mode")
     if isinstance(pm, list):
         ood = sorted(m["mode"] for m in pm if m["kind"] == "OOD")
-        if ood != [task]:
+        if ood != out:
             bad.append(f"{task}/{name}: per_mode marks {ood or 'nothing'} as OOD, expected "
-                       f"['{task}'] — the evaluation used the wrong protocol")
+                       f"{out} — the evaluation used the wrong protocol")
         ident = sorted(m["mode"] for m in pm if m["kind"] == "ID")
         if ident and ident != sorted(trained_modes(task)):
             bad.append(f"{task}/{name}: ID modes {ident} != trained modes "
@@ -92,10 +93,11 @@ def check_leaf(task: str, leaf: Path, split: str, counts: dict,
     fam = "ensemble" if "Ensemble_GP" in name else "AE_GAN"
     want = counts.get(fam, {})
     if want and n_ood is not None:
-        if n_ood != want.get(task, -1):
-            bad.append(f"{task}/{name}: n_ood {n_ood:,} != {want.get(task, 0):,} "
-                       f"{task} windows in {fam}/{split}")
-        want_id = sum(v for k, v in want.items() if k != task)
+        want_ood = sum(v for k, v in want.items() if k in out)
+        if n_ood != want_ood:
+            bad.append(f"{task}/{name}: n_ood {n_ood:,} != {want_ood:,} "
+                       f"{'/'.join(out)} windows in {fam}/{split}")
+        want_id = sum(v for k, v in want.items() if k not in out)
         if n_id != want_id:
             bad.append(f"{task}/{name}: n_id {n_id:,} != {want_id:,} non-{task} windows "
                        f"in {fam}/{split}")
@@ -116,9 +118,9 @@ def check_leaf(task: str, leaf: Path, split: str, counts: dict,
             meta = pd.read_parquet(pq, columns=["mode"])
             if len(meta) == len(lab):
                 flagged = sorted(pd.Series(meta["mode"])[lab == 1].unique().tolist())
-                if flagged and flagged != [task]:
+                if flagged and flagged != out:
                     bad.append(f"{task}/{name}: {npz.name} labels modes {flagged} as OOD, "
-                               f"expected ['{task}']")
+                               f"expected {out}")
         else:
             # Only the autoencoder and the GAN save a per-window meta table beside their
             # scores; the ensembles save labels alone. The count check above still applies and
@@ -143,7 +145,7 @@ def main() -> int:
     a = ap.parse_args()
 
     tasks = [d.name for d in sorted(HERE.iterdir())
-             if d.is_dir() and d.name in ALL_MODES]
+             if d.is_dir() and d.name in HOLDOUTS]
     if not tasks:
         print("no task directories under ml/LOTO/")
         return 0

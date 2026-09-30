@@ -21,7 +21,7 @@ def find_root(start=None):
 
 
 ROOT = find_root(Path(__file__).parent)
-for folder in ('ml/vanilla', 'ml/prob_ensemble', 'ml/LOTO'):
+for folder in ('ml/vanilla', 'ml/prob_ensemble', 'ml/LOTO', 'ml/VAE', 'ml/awareness'):
     path = str(ROOT / folder)
     if path not in sys.path:
         sys.path.append(path)

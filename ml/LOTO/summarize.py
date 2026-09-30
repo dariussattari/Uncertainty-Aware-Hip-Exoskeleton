@@ -26,11 +26,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
 import pandas as pd
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+from splits import HOLDOUTS, held_out_modes  # noqa: E402
 REPO = next(d for d in HERE.parents if (d / "data").is_dir())
 
 # the participant-split counterpart of each LOTO leaf, for the side-by-side column
@@ -89,7 +92,7 @@ def to_markdown(df: pd.DataFrame, split: str) -> str:
     if df.empty:
         return f"# LOTO results ({split})\n\nNothing evaluated yet.\n"
     p = df[df["primary"]].copy()
-    tasks = [t for t in ("SA", "SD", "ST", "TR") if t in set(p["held_out"])]
+    tasks = [t for t in HOLDOUTS if t in set(p["held_out"])]
 
     lines = [f"# Leave-one-task-out — {split} split", "",
              "AUROC, and best achievable J in brackets. `base` is the participant-split run "
@@ -151,8 +154,7 @@ def figure(df: pd.DataFrame, split: str, out: Path) -> Path | None:
         return None
     leaves = [l for l in BASELINE if l in set(p["leaf"])] + \
              sorted(set(p["leaf"]) - set(BASELINE))
-    groups = ["participant-split"] + [t for t in ("SA", "SD", "ST", "TR")
-                                      if t in set(p["held_out"])]
+    groups = ["participant-split"] + [t for t in HOLDOUTS if t in set(p["held_out"])]
     x = np.arange(len(leaves))
     w = 0.8 / len(groups)
 
@@ -237,7 +239,7 @@ def figure_modes(pm: pd.DataFrame, split: str, out: Path) -> Path | None:
     leaves += sorted(set(pm["leaf"]) - set(BASELINE))
     if not leaves:
         return None
-    tasks = [t for t in MODES if t in set(pm["held_out"])]
+    tasks = [t for t in HOLDOUTS if t in set(pm["held_out"])]
     modes = [m for m in MODES if m in set(pm["mode"])]
 
     fig, axes = plt.subplots(len(leaves), 1, figsize=(9, 2.6 * len(leaves)), squeeze=False,
@@ -249,7 +251,7 @@ def figure_modes(pm: pd.DataFrame, split: str, out: Path) -> Path | None:
         for i, t in enumerate(tasks):
             d = sub[sub["held_out"] == t].set_index("mode")
             vals = [d["flagged_pct"].get(m, np.nan) for m in modes]
-            hatch = ["//" if m == t else "" for m in modes]
+            hatch = ["//" if m in held_out_modes(t) else "" for m in modes]
             bars = ax.bar(x + i * w - 0.4 + w / 2, vals, w, label=f"−{t}")
             for b, h in zip(bars, hatch):
                 b.set_hatch(h)

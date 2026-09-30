@@ -36,13 +36,30 @@ sys.path.insert(0, str(REPO / "ml" / "vanilla"))
 # lives in $HOME. It must be the directory containing AE_GAN/ and ensemble/.
 DATA_ROOT = Path(os.environ.get("HIPEXO_LOTO_DATA") or (REPO / "data" / "processed_all"))
 ALL_MODES = ("LG", "RA", "RD", "SA", "SD", "ST", "TR")
-HELD_OUT_TASKS = ("SA", "ST", "TR")
+# A holdout is a NAME mapping to the set of modes removed from training and scored as OOD.
+# The first three are the original single-task holdouts; ``DOWN`` holds out a whole regime:
+# both descents plus standing and transitions, so training sees level ground and ascents only
+# (LG, RA, SA) and the question is whether "descending" can be flagged without ever being seen.
+HOLDOUTS: dict[str, tuple[str, ...]] = {
+    "SA": ("SA",), "ST": ("ST",), "TR": ("TR",),
+    "DOWN": ("RD", "SD", "ST", "TR"),
+}
+HELD_OUT_TASKS = tuple(HOLDOUTS)
 
-__all__ = ["ALL_MODES", "HELD_OUT_TASKS", "DATA_ROOT", "trained_modes", "restrict", "build"]
+__all__ = ["ALL_MODES", "HOLDOUTS", "HELD_OUT_TASKS", "DATA_ROOT", "held_out_modes",
+           "trained_modes", "restrict", "build"]
+
+
+def held_out_modes(held_out: str) -> tuple[str, ...]:
+    """The modes a holdout name removes from training (a single mode for SA/ST/TR)."""
+    if held_out not in HOLDOUTS:
+        raise ValueError(f"held_out must be one of {tuple(HOLDOUTS)}, got {held_out!r}")
+    return HOLDOUTS[held_out]
 
 
 def trained_modes(held_out: str) -> list[str]:
-    return [m for m in ALL_MODES if m != held_out]
+    out = set(held_out_modes(held_out))
+    return [m for m in ALL_MODES if m not in out]
 
 
 # ---------------------------------------------------------------- the row-restricted view
@@ -54,6 +71,14 @@ def restrict(split, keep: np.ndarray, as_inputs_only: bool = False):
     ``OodSplit``: ``take`` returns ``x`` alone, which is all a Psi score ever needs.
     """
     keep = np.asarray(keep, dtype=np.int64)
+    parent = getattr(split, "_parent", None)
+    if parent is not None:
+        # A view of a view: compose the row maps and build directly on the original split, so
+        # ``take`` applies exactly one row map. (Nesting the classes instead would apply the
+        # inner map twice and index past the end of the inner view.)
+        keep = split._keep[keep]
+        as_inputs_only = as_inputs_only or bool(getattr(split, "_inputs_only", False))
+        split = parent
     base = type(split)
 
     class _View(base):                                      # type: ignore[misc, valid-type]
@@ -86,6 +111,8 @@ def restrict(split, keep: np.ndarray, as_inputs_only: bool = False):
     v = _View.__new__(_View)
     v.__dict__.update(split.__dict__)        # shares X / y / mask memmaps -- no copy
     v._keep = keep
+    v._parent = split
+    v._inputs_only = as_inputs_only
     v.meta = split.meta.iloc[keep].reset_index(drop=True)
     return v
 
@@ -95,6 +122,7 @@ def restrict(split, keep: np.ndarray, as_inputs_only: bool = False):
 def _apply(data, held_out: str) -> None:
     """Replace ``data``'s splits with task-restricted views, in place."""
     keep_modes = trained_modes(held_out)
+    out_modes = held_out_modes(held_out)
     old_splits, old_ood = dict(data.splits), dict(getattr(data, "ood", {}))
     keeps: dict[str, np.ndarray] = {}
     new_ood = {}
@@ -105,17 +133,18 @@ def _apply(data, held_out: str) -> None:
         keeps[name] = id_rows
         data.splits[name] = restrict(sp, id_rows)
         if name in ("val", "test"):
-            ood_rows = np.flatnonzero(mode == held_out)
+            ood_rows = np.flatnonzero(np.isin(mode, out_modes))
             if len(ood_rows) == 0:
                 raise ValueError(
-                    f"no {held_out} windows in the {name} split -- the {name} participants "
-                    f"never performed that task, so it cannot be scored as OOD")
+                    f"no {'/'.join(out_modes)} windows in the {name} split -- the {name} "
+                    f"participants never performed that task, so it cannot be scored as OOD")
             keeps[f"ood_{name}"] = ood_rows
             new_ood[name] = restrict(sp, ood_rows, as_inputs_only=True)
 
     data.train, data.val, data.test = (data.splits[s] for s in ("train", "val", "test"))
     data.ood = new_ood
     data.held_out_task = held_out
+    data.held_out_modes = list(out_modes)
     data.trained_modes = keep_modes
 
     # SyntheticEnsembleData caches a per-row target ingredient keyed by id(split), and a
@@ -139,33 +168,35 @@ def _apply(data, held_out: str) -> None:
 
 # ---------------------------------------------------------------- construction
 
-def build(family: str, held_out: str, batch_size: int = 1024, scale: bool = True, **kw):
+def build(family: str, held_out: str, batch_size: int = 1024, scale: bool = True,
+          data_root: "str | Path | None" = None, **kw):
     """A vanilla data object over the mode-complete arrays, with ``held_out`` removed.
 
     ``family`` is one of ``ensemble`` (gait phase, labelled), ``autoencoder``, ``gan`` or
-    ``synthetic`` (label-free targets; pass ``target=`` and ``horizon=``).
+    ``synthetic`` (label-free targets; pass ``target=`` and ``horizon=``). ``data_root``
+    replaces ``DATA_ROOT`` for one call, e.g. the 22-channel pelvis-IMU arrays of the ablation.
     """
-    if held_out not in ALL_MODES:
-        raise ValueError(f"held_out must be one of {ALL_MODES}, got {held_out!r}")
+    held_out_modes(held_out)          # validates the name
+    root = Path(data_root) if data_root else DATA_ROOT
     # Check the family this call will actually read, not a fixed one. The gait-phase ensemble
     # reads `ensemble/` and everything else reads `AE_GAN/`, and on a cluster only the needed
     # family may have been staged to node-local disk -- so demanding AE_GAN unconditionally
     # fails a perfectly good Ensemble_GP run.
     need = "ensemble" if family == "ensemble" else "AE_GAN"
-    if not (DATA_ROOT / need / "train_X.npy").exists():
+    if not (root / need / "train_X.npy").exists():
         raise FileNotFoundError(
-            f"{DATA_ROOT}/{need} has not been built (needed for family={family!r}). The arrays "
+            f"{root}/{need} has not been built (needed for family={family!r}). The arrays "
             f"under data/processed/ hold no SA/SD/ST/TR windows for the training participants, "
             f"so leave-one-task-out is impossible from them. Run: python ml/LOTO/build_data.py "
             f"-- or, on a cluster, check $HIPEXO_STAGE_FAMILY includes {need!r}.")
 
     import dataset as D
     if family == "ensemble":
-        return _built(D.EnsembleGaitPhase(root=DATA_ROOT / "ensemble",
+        return _built(D.EnsembleGaitPhase(root=root / "ensemble",
                                           batch_size=batch_size, scale=scale), held_out)
     cls = {"autoencoder": D.AutoencoderData, "gan": D.GanData,
            "synthetic": D.SyntheticEnsembleData}[family]
-    return _built(cls(root=DATA_ROOT, batch_size=batch_size, scale=scale, **kw), held_out)
+    return _built(cls(root=root, batch_size=batch_size, scale=scale, **kw), held_out)
 
 
 def _built(data, held_out: str):
@@ -184,7 +215,7 @@ if __name__ == "__main__":                       # python ml/LOTO/splits.py
 
     for task in ([a.held_out] if a.held_out else HELD_OUT_TASKS):
         d = build(a.family, task, batch_size=256)
-        print(f"\nheld out {task}  trained on {' '.join(trained_modes(task))}")
+        print(f"\nheld out {task} = {' '.join(held_out_modes(task))}  trained on {' '.join(trained_modes(task))}")
         print(f"  {d}")
         for name in ("train", "val", "test"):
             sp = d.splits[name]
@@ -192,4 +223,6 @@ if __name__ == "__main__":                       # python ml/LOTO/splits.py
             print(f"    {name:5s} {len(sp):7,}  " +
                   "  ".join(f"{m}={by.get(m, 0):6,}" for m in trained_modes(task)))
         for name, sp in d.ood.items():
-            print(f"    ood_{name:3s} {len(sp):7,}  {task}")
+            by = sp.meta.groupby("mode").size().to_dict()
+            print(f"    ood_{name:3s} {len(sp):7,}  " +
+                  "  ".join(f"{m}={by.get(m, 0):6,}" for m in held_out_modes(task)))
