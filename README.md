@@ -206,9 +206,12 @@ and thigh pitch (gravity fused with the sagittal gyro). Evaluated on the Nature 
 
 - The polar phase tracks true gait phase to about a tenth of a stride with one fixed offset, so it is
   a continuous gait phase for the controller without heel-strike detection.
-- Stride and step regularity are the best single detectors of cyclic tasks (AUROC 0.91, 0.85), and the
+- Stride and step regularity are the best single detectors of cyclic tasks (AUROC 0.89, 0.88), and the
   only features that add to the raw data for task and controller classification. Most of that gain comes
   from the 3 s of history they summarize; raw summaries over 3 s reach nearly the same.
+- The rhythm features (stride and step regularity, dominant frequency) report 0 when the window has no peak
+  in their search band, instead of the band-edge value. Their 0.5–1.6 s stride search misses slower strides
+  (about 1.7–1.8 s), so some slow walking and stair windows read as no rhythm; widening it needs a longer window.
 - Jerk and angular acceleration largely re-express raw signal variability. No family materially improves
   the hip-moment probe (R² 0.725 to 0.734).
 - In PCA and UMAP space ([`03_feature_embeddings.ipynb`](notebooks/nature/data_exploration/03_feature_embeddings.ipynb))

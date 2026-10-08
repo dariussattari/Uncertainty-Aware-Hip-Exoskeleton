@@ -21,6 +21,17 @@ def check():
     # step regularity: a summed signal repeating every half stride scores ~1
     step = np.sin(2 * np.pi * 1.8 * t)
     assert ft.get_step_regularity(step, step, spec['stride_lag'], ends).min() > 0.9
+    # no rhythm in the band (slow 0.1 Hz sway): the maxima sit on the band edges, so frequency and regularities are 0
+    sway = ft.get_spectral_features(10 * np.sin(2 * np.pi * 0.1 * t), ends)
+    assert (sway['dominant_hz'] == 0).all() and (sway['stride_regularity'] == 0).all() and np.isnan(sway['stride_lag']).all()
+    flat = ft.get_spectral_features(np.full(len(t), 5.0), ends)                                  # frozen sensor: missing, not 'no rhythm'
+    assert all(np.isnan(v).all() for v in flat.values())
+    slow = np.sin(2 * np.pi * 0.1 * t)
+    assert (ft.get_step_regularity(slow, slow, sway['stride_lag'], ends) == 0).all()             # no stride, no step
+    assert (ft.get_step_regularity(slow, slow, spec['stride_lag'], ends) == 0).all()             # stride given, no step peak
+    gap = slow.copy()
+    gap[ends[3]] = np.nan
+    assert np.isnan(ft.get_step_regularity(gap, gap, spec['stride_lag'], ends)[3])                # missing data stays NaN
     # high-frequency share: 30 Hz is all above the 10 Hz cutoff, 1 Hz none of it
     w = ft.get_windows(np.sin(2 * np.pi * 30 * t), ends, 200)
     assert ft.get_band_power_share(w, 10).min() > 0.95

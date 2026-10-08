@@ -12,6 +12,7 @@ the device. Four families, after the thesis plan:
   spectral                         dominant frequency and spectral entropy of the hip angle; stride regularity
                                    (hip-angle autocorrelation at one stride); step regularity (autocorrelation
                                    of both thighs' summed long-axis acceleration at half a stride).  3 s history
+                                   (frequency and regularities are 0 when the window has no in-band peak)
   orientation                      thigh pitch: gravity direction fused with the sagittal gyro
                                    (complementary filter, 1 s), so limb acceleration does not corrupt it. instant
 
@@ -150,6 +151,13 @@ def get_spectral_features(angle, ends, length = WINDOW['spectral'], rate = RATE_
     and Helbostad, on the hip angle instead of trunk acceleration, overlap-normalized so it stays in [-1, 1]);
     its lag is the stride period, returned in samples for the step-regularity search. The dominant frequency's
     peak is located between FFT bins by a parabolic fit.
+
+    A maximum on the edge of its search band is not a peak: the spectrum or autocorrelation is still rising
+    beyond the band (standing, sway, transitions), and the edge value only measures that slope. Such a window
+    reports dominant frequency 0, stride regularity 0 and no stride lag (NaN), so "no rhythm" reads as 0, not as
+    a spurious 0.3 Hz or 0.5 s rhythm. The rule also zeroes a true peak lying exactly on an edge: a 3 s window
+    cannot tell a rhythm near 0.3 Hz from drift (its tapered spectrum peaks there too), and stride periods of
+    exactly 0.5 or 1.6 s are rare. A window with missing samples, or a perfectly flat one, is NaN throughout.
     """
     rows = get_windows(angle, ends, length)
     valid = np.isfinite(rows).all(axis = 1)
@@ -159,42 +167,50 @@ def get_spectral_features(angle, ends, length = WINDOW['spectral'], rate = RATE_
     band = np.flatnonzero((freq >= STRIDE_BAND_HZ[0]) & (freq <= STRIDE_BAND_HZ[1]))
     magnitude = np.abs(np.fft.rfft(tapered, N_FFT, axis = 1))
     k = band[np.argmax(magnitude[:, band], axis = 1)]
+    no_frequency_peak = (k == band[0]) | (k == band[-1])
     rows_idx = np.arange(len(k))
     left, mid, right = magnitude[rows_idx, k - 1], magnitude[rows_idx, k], magnitude[rows_idx, k + 1]
     with np.errstate(divide = 'ignore', invalid = 'ignore'):
         shift = np.clip(np.nan_to_num(0.5 * (left - right) / (left - 2 * mid + right)), -0.5, 0.5)   # parabolic peak
-    dominant = (k + shift) * rate / N_FFT
+    dominant = np.where(no_frequency_peak, 0.0, (k + shift) * rate / N_FFT)
     power = np.abs(np.fft.rfft(tapered, axis = 1)) ** 2
     f0 = np.fft.rfftfreq(length, 1 / rate)
     eb = (f0 >= ENTROPY_BAND_HZ[0]) & (f0 <= ENTROPY_BAND_HZ[1])
     with np.errstate(divide = 'ignore', invalid = 'ignore'):
         p = power[:, eb] / power[:, eb].sum(axis = 1, keepdims = True)
         entropy = -np.sum(np.where(p > 0, p * np.log(p), 0.0), axis = 1) / np.log(eb.sum())
+    entropy = np.where(power[:, eb].sum(axis = 1) > 0, entropy, np.nan)  # a flat window (frozen sensor) has no spectrum
     ac = get_overlap_autocorrelation(rows)
     lags = np.arange(int(STRIDE_LAG_S[0] * rate), int(STRIDE_LAG_S[1] * rate) + 1)
     best = np.argmax(np.nan_to_num(ac[:, lags], nan = -np.inf), axis = 1)
-    regularity = ac[np.arange(len(ac)), lags[best]]
+    no_stride_peak = (best == 0) | (best == len(lags) - 1)
+    regularity = np.where(no_stride_peak, 0.0, ac[np.arange(len(ac)), lags[best]])
     usable = valid & np.isfinite(regularity) & np.isfinite(entropy)
     return {'dominant_hz': np.where(usable, dominant, np.nan), 'spectral_entropy': np.where(usable, entropy, np.nan),
-            'stride_regularity': np.where(usable, regularity, np.nan), 'stride_lag': np.where(usable, lags[best], np.nan)}
+            'stride_regularity': np.where(usable, regularity, np.nan),
+            'stride_lag': np.where(usable & ~no_stride_peak, lags[best], np.nan)}
 
 
 def get_step_regularity(long_acc_left, long_acc_right, stride_lag, ends, length = WINDOW['spectral']):
     """Autocorrelation of the two thighs' summed long-axis acceleration at half a stride (+-10%).
 
     The sum stands in for whole-body vertical acceleration, which repeats every step; high values mean the
-    left and right steps look alike.
+    left and right steps look alike. 0 when there is no step peak: no stride lag (NaN, see
+    ``get_spectral_features``) or a maximum on the edge of the +-10% window. NaN only for missing samples.
     """
     signal = np.asarray(long_acc_left, dtype = float) + np.asarray(long_acc_right, dtype = float)
     rows = get_windows(signal, ends, length)
-    valid = np.isfinite(rows).all(axis = 1) & np.isfinite(stride_lag)
+    valid = np.isfinite(rows).all(axis = 1)
+    has_stride = valid & np.isfinite(stride_lag)
     ac = get_overlap_autocorrelation(np.where(valid[:, None], rows, 0.0))
-    half = np.where(valid, stride_lag, 2 * STRIDE_LAG_S[0] * RATE_HZ) / 2
+    half = np.where(has_stride, stride_lag, 2 * STRIDE_LAG_S[0] * RATE_HZ) / 2
     lo, hi = np.floor(0.9 * half).astype(int), np.ceil(1.1 * half).astype(int)
     idx = lo[:, None] + np.arange(int((hi - lo).max()) + 1 if len(lo) else 1)[None, :]
     vals = np.take_along_axis(ac, np.clip(idx, 0, length - 1), axis = 1)
     vals = np.where(idx <= hi[:, None], np.nan_to_num(vals, nan = -np.inf), -np.inf)
-    return np.where(valid, vals.max(axis = 1), np.nan)
+    best = vals.argmax(axis = 1)
+    has_peak = has_stride & (best > 0) & (lo + best < hi)
+    return np.where(valid, np.where(has_peak, vals.max(axis = 1), 0.0), np.nan)
 
 
 # ----------------------------------------------------------------------------- 4. orientation
@@ -249,6 +265,6 @@ def get_window_features(left, right, ends, rate = RATE_HZ):
     """
     legs = {side: get_leg_features(leg['angle'], leg['acc'], leg['gyr'], ends, rate) for side, leg in (('l', left), ('r', right))}
     table = pd.DataFrame({f'{name}_{side}': legs[side][name] for side in ('l', 'r') for name in FEATURE_NAMES})
-    table['step_regularity'] = get_step_regularity(np.asarray(left['acc'])[:, 0], np.asarray(right['acc'])[:, 0],
-                                                   legs['l']['stride_lag'], ends)
+    step = get_step_regularity(np.asarray(left['acc'])[:, 0], np.asarray(right['acc'])[:, 0], legs['l']['stride_lag'], ends)
+    table['step_regularity'] = np.where(np.isfinite(legs['l']['stride_regularity']), step, np.nan)   # no hip angle, no stride search
     return table.astype(np.float32)
