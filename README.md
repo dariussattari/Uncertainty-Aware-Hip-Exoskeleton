@@ -43,7 +43,7 @@ throttles aggressive clients).
 
 **Nature 2024 dataset.** `Phase1And2_Complete.zip` and `Phase3_Complete.zip` from the Georgia Tech repository,
 unzipped to `data/nature/phase1-2` and `data/nature/phase3` (verified against the zips' own file index: every
-file, size and CRC32). [`data_exploration/06_nature_dataset.ipynb`](notebooks/data_exploration/06_nature_dataset.ipynb)
+file, size and CRC32). [`notebooks/nature/data_exploration/01_dataset.ipynb`](notebooks/nature/data_exploration/01_dataset.ipynb)
 asks whether it can replace the dataset above as the repository for a hip joint-moment estimator and forecaster
 (hip encoder, thigh IMU, task label, hip moment). Short answer: yes, with a one-time build — recompute encoder
 velocity (the published channel is half scale for most sessions), remap IMU axes (pipeline `(x, y, z)` = Nature
@@ -64,7 +64,7 @@ defensible baseline before changing anything.
 
 ### 1.2 Exploration — done
 
-[`data_exploration/01_load_molinaro.ipynb`](data_exploration/01_load_molinaro.ipynb)
+[`notebooks/sci_rob/data_exploration/01_load_molinaro.ipynb`](notebooks/sci_rob/data_exploration/01_load_molinaro.ipynb)
 
 - Trial inventory: all 5,364 trials parsed into structured metadata (mode, slope/stair height,
   speed, controller, phase, hardware), cached to Parquet.
@@ -86,7 +86,7 @@ defensible baseline before changing anything.
 
 ### 1.3 Preprocessing — done, pending OOD revision
 
-[`data_exploration/02_build_windows.ipynb`](data_exploration/02_build_windows.ipynb)
+[`notebooks/sci_rob/data_exploration/02_build_windows.ipynb`](notebooks/sci_rob/data_exploration/02_build_windows.ipynb)
 
 The 16 inputs, in the paper's per-side order (`accel xyz`, `gyro xyz`, angle, velocity):
 
@@ -125,8 +125,8 @@ widen the in-distribution manifold for a reason unrelated to human movement.
 
 ### 1.5 Models — planned
 
-Four architectures, reproducing Table I of the ankle paper. Shared code in
-`src/uncertainty/`; one training notebook each.
+Four architectures, reproducing Table I of the ankle paper. Architectures in `ml/common/models/`,
+training and scoring in `ml/sci_rob/vanilla/`; one notebook each in `notebooks/sci_rob/model_exploration/`.
 
 | Model | Uncertainty score Ψ | Labels? | Their F1 |
 |---|---|---|---|
@@ -199,10 +199,10 @@ Other directions, open:
   gait phase is undefined for non-cyclic tasks, a limitation the ankle paper flags as the reason
   its best model can only ever have cyclic actions in its training set.
 
-**Implemented: four engineered feature families** (`ml/features/features.py`, all causal):
+**Implemented: four engineered feature families** (`ml/common/features.py`, all causal):
 jerk and high-frequency content, polar phase space (hip angle against velocity), spectral regularity,
 and thigh pitch (gravity fused with the sagittal gyro). Evaluated on the Nature dataset in
-[`data_exploration/07_nature_features.ipynb`](notebooks/data_exploration/07_nature_features.ipynb):
+[`notebooks/nature/data_exploration/02_features.ipynb`](notebooks/nature/data_exploration/02_features.ipynb):
 
 - The polar phase tracks true gait phase to about a tenth of a stride with one fixed offset, so it is
   a continuous gait phase for the controller without heel-strike detection.
@@ -211,7 +211,7 @@ and thigh pitch (gravity fused with the sagittal gyro). Evaluated on the Nature 
   from the 3 s of history they summarize; raw summaries over 3 s reach nearly the same.
 - Jerk and angular acceleration largely re-express raw signal variability. No family materially improves
   the hip-moment probe (R² 0.725 to 0.734).
-- In PCA and UMAP space ([`08_nature_feature_embeddings.ipynb`](notebooks/data_exploration/08_nature_feature_embeddings.ipynb))
+- In PCA and UMAP space ([`03_feature_embeddings.ipynb`](notebooks/nature/data_exploration/03_feature_embeddings.ipynb))
   the ranking holds: the spectral family is the only one that makes task families cluster more cleanly
   across people, and controller classes form no clusters in any space.
 
@@ -235,23 +235,47 @@ to rebuild `data/processed/`.
 
 ## Layout
 
+Code and notebooks are split by dataset. Anything that does not care which dataset it reads (model
+architectures, feature extractors, signal helpers) lives in `ml/common/`; anything that loads, labels,
+splits or trains on one dataset lives under that dataset's folder and imports from `ml/common/`. New work on
+the Nature data, such as retraining the awareness pipeline, goes in `ml/nature/` (e.g. `ml/nature/awareness/`).
+
 ```
 data/
   science-robotics/     supplementary figure data (MATLAB tables) — in git
   molinaro-raw/         34 subject folders of raw 200 Hz CSVs — gitignored, 6.1 GB
   nature/               Nature 2024 dataset, Complete variant (phase1-2/, phase3/) — gitignored, 88 GB
-  cache/                trial inventory — gitignored
+  cache/                trial inventory, Nature Parquet caches — gitignored
   processed/            windowed model-ready arrays + scaler + config — gitignored
-data_exploration/
-  01_load_molinaro.ipynb    inventory, loading, NaN audit, sensor axis conventions
-  02_build_windows.ipynb    16-channel windowing, targets, masks, splits, scaler
-  06_nature_dataset.ipynb   Nature 2024 dataset: verification, sensors, labels, moments, comparison
-  07_nature_features.ipynb  engineered features (jerk, polar phase, spectral, thigh pitch) and their effect
-  08_nature_feature_embeddings.ipynb  the same feature ablation in PCA and UMAP space (2-D, interactive 3-D)
-  _nature.py, test_nature.py  its data access (Parquet cache in data/cache/nature/) and one check
+ml/
+  common/               dataset-agnostic
+    models/             ConvAutoencoder, ensembles, GAN, ConvVAE
+    features.py         engineered features: jerk, polar phase, spectral, thigh pitch (all causal)
+    signals.py          bouts, lagged correlation, stride period, IMU frame solver
+    test_*.py           one runnable check per module
+  sci_rob/              Science Robotics 2024 (Molinaro) dataset
+    vanilla/            paper reproduction: data, targets, training, evaluation, CLI (main.py)
+    prob_ensemble/      probabilistic ensemble (aleatoric and epistemic split)
+    LOTO/               leave-one-task-out holdouts
+    VAE/                VAE trainer and beta sweep (model in common/models/vae.py)
+    awareness/          awareness pipeline: regime holdout, fault injection
+  nature/               Nature 2024 dataset
+    nature_data.py      data access and Parquet caches in data/cache/nature/ (test_nature_data.py)
+notebooks/
+  sci_rob/
+    data_exploration/   01 load, 02 build windows, 03 feature plots, 04 NIS, 05 synthetic targets
+    model_exploration/  01–10: one notebook per model, then LOTO, UMAP and the awareness holdout
+  nature/
+    data_exploration/   01 dataset audit, 02 engineered features, 03 feature embeddings (PCA, UMAP)
 scripts/
-  download_molinaro.sh      resumable parallel download from Zenodo
-src/uncertainty/            (planned) shared model / scoring / metrics code
+  download_molinaro.sh  resumable parallel download from Zenodo
+```
+
+**Cluster checkout.** The cluster copy is rsynced, not cloned, and predates this layout. Move the old
+folders once so existing `runs/` stay beside their code, then push as usual:
+
+```bash
+cd ~/Uncertainty-Aware-Hip-Exoskeleton && mkdir -p ml/sci_rob && for d in vanilla LOTO VAE awareness prob_ensemble; do [ -d ml/$d ] && mv ml/$d ml/sci_rob/; done
 ```
 
 ## References
