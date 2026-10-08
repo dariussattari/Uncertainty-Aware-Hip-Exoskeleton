@@ -23,7 +23,7 @@ Three different artifacts get confused:
 |---|---|---|
 | **Raw sensor data — what we use** | [Zenodo 10849318](https://zenodo.org/records/10849318) · [Dryad](https://doi.org/10.5061/dryad.8kprr4xsv) | 200 Hz time series, 34 subjects, ~2.4 GB zipped |
 | Supplementary figure data | `data/science-robotics/` (in repo) | MATLAB `table` objects behind the paper's figures. No time series. `scipy.io` cannot decode them |
-| Nature 2024 dataset | [10.35090/gatech/75759](https://doi.org/10.35090/gatech/75759) | Belongs to *Task-agnostic exoskeleton control* (s41586-024-08157-7) — a **different paper** |
+| Nature 2024 dataset — candidate for the moment estimator | [10.35090/gatech/75759](https://doi.org/10.35090/gatech/75759) · `data/nature/` (Complete variant, gitignored, 88 GB) | Belongs to *Task-agnostic exoskeleton control* (s41586-024-08157-7) — a **different paper**. 22 people, 26 tasks, net and biological joint moments; see below |
 
 **Dataset shape:** 34 participants (`AB01`–`AB34`), 5,364 trials, 8.66 M samples, 12.0 hours,
 6.1 GB extracted. Each trial is `AB##/<trial>/{angle,exo,gp,grf,moment}.csv`, all sharing an
@@ -40,6 +40,15 @@ identical `time` column on a clean 200 Hz grid.
 
 Download with `scripts/download_molinaro.sh` (resumable, parallel, verifies archives — Zenodo
 throttles aggressive clients).
+
+**Nature 2024 dataset.** `Phase1And2_Complete.zip` and `Phase3_Complete.zip` from the Georgia Tech repository,
+unzipped to `data/nature/phase1-2` and `data/nature/phase3` (verified against the zips' own file index: every
+file, size and CRC32). [`data_exploration/06_nature_dataset.ipynb`](notebooks/data_exploration/06_nature_dataset.ipynb)
+asks whether it can replace the dataset above as the repository for a hip joint-moment estimator and forecaster
+(hip encoder, thigh IMU, task label, hip moment). Short answer: yes, with a one-time build — recompute encoder
+velocity (the published channel is half scale for most sessions), remap IMU axes (pipeline `(x, y, z)` = Nature
+`(y, z, x)`), recover stair and incline direction from joint power, and mask each leg by its own activity flag.
+BT04 was never published; BT01, BT02 and BT13 appear in both phases (split by person).
 
 ---
 
@@ -190,6 +199,22 @@ Other directions, open:
   gait phase is undefined for non-cyclic tasks, a limitation the ankle paper flags as the reason
   its best model can only ever have cyclic actions in its training set.
 
+**Implemented: four engineered feature families** (`ml/features/features.py`, all causal):
+jerk and high-frequency content, polar phase space (hip angle against velocity), spectral regularity,
+and thigh pitch (gravity fused with the sagittal gyro). Evaluated on the Nature dataset in
+[`data_exploration/07_nature_features.ipynb`](notebooks/data_exploration/07_nature_features.ipynb):
+
+- The polar phase tracks true gait phase to about a tenth of a stride with one fixed offset, so it is
+  a continuous gait phase for the controller without heel-strike detection.
+- Stride and step regularity are the best single detectors of cyclic tasks (AUROC 0.91, 0.85), and the
+  only features that add to the raw data for task and controller classification. Most of that gain comes
+  from the 3 s of history they summarize; raw summaries over 3 s reach nearly the same.
+- Jerk and angular acceleration largely re-express raw signal variability. No family materially improves
+  the hip-moment probe (R² 0.725 to 0.734).
+- In PCA and UMAP space ([`08_nature_feature_embeddings.ipynb`](notebooks/data_exploration/08_nature_feature_embeddings.ipynb))
+  the ranking holds: the spectral family is the only one that makes task families cluster more cleanly
+  across people, and controller classes form no clusters in any space.
+
 ---
 
 ## Setup
@@ -214,11 +239,16 @@ to rebuild `data/processed/`.
 data/
   science-robotics/     supplementary figure data (MATLAB tables) — in git
   molinaro-raw/         34 subject folders of raw 200 Hz CSVs — gitignored, 6.1 GB
+  nature/               Nature 2024 dataset, Complete variant (phase1-2/, phase3/) — gitignored, 88 GB
   cache/                trial inventory — gitignored
   processed/            windowed model-ready arrays + scaler + config — gitignored
 data_exploration/
   01_load_molinaro.ipynb    inventory, loading, NaN audit, sensor axis conventions
   02_build_windows.ipynb    16-channel windowing, targets, masks, splits, scaler
+  06_nature_dataset.ipynb   Nature 2024 dataset: verification, sensors, labels, moments, comparison
+  07_nature_features.ipynb  engineered features (jerk, polar phase, spectral, thigh pitch) and their effect
+  08_nature_feature_embeddings.ipynb  the same feature ablation in PCA and UMAP space (2-D, interactive 3-D)
+  _nature.py, test_nature.py  its data access (Parquet cache in data/cache/nature/) and one check
 scripts/
   download_molinaro.sh      resumable parallel download from Zenodo
 src/uncertainty/            (planned) shared model / scoring / metrics code

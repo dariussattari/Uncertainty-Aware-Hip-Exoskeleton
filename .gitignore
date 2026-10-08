@@ -222,6 +222,8 @@ __marimo__/
 # Datasets (6+ GB; re-downloadable via scripts/download_molinaro.sh)
 data/molinaro-raw/
 data/cache/
+# Nature 2024 dataset, Complete variant (88 GB; doi:10.35090/gatech/75759)
+data/nature/
 *.zip
 
 # Windowed arrays produced by 02_build_windows.ipynb
