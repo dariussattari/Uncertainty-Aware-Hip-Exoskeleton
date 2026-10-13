@@ -35,6 +35,7 @@ REPO = next(p for p in Path(__file__).resolve().parents if (p / 'data').is_dir()
 if str(REPO / 'ml' / 'common') not in sys.path:
     sys.path.insert(0, str(REPO / 'ml' / 'common'))
 import features as ft  # noqa: E402  (ml/common/features.py: the engineered-feature definitions)
+import signals as sg  # noqa: E402  (ml/common/signals.py: bouts)
 NATURE = REPO / 'data' / 'nature'
 SCIROB = REPO / 'data' / 'molinaro-raw'
 CACHE = REPO / 'data' / 'cache' / 'nature'
@@ -85,6 +86,63 @@ def get_stair_direction(recording):
     result = None
     if parse_task(recording) == 'stairs':
         result = 'up' if int(recording.rsplit('_', 1)[1]) % 2 else 'down'
+    return result
+
+
+# Task taxonomy used across the Nature notebooks. Controller classes follow notebook 01's estimator-benchmark rule
+# (section 5.5) and are provisional: its thresholds are a choice.
+TASK_FAMILIES = {'walking': ('normal_walk', 'incline_walk', 'walk_backward', 'weighted_walk', 'dynamic_walk', 'obstacle_walk'),
+                 'stairs / curbs / step-ups': ('stairs', 'curb_up', 'curb_down', 'step_ups'),
+                 'squat / lift / sit / lunge': ('squats', 'lift_weight', 'sit_to_stand', 'lunges'),
+                 'jump / run / cut / shuffle': ('jump', 'tire_run', 'cutting', 'side_shuffle'),
+                 'standing / unstructured': ('poses', 'tug_of_war', 'push', 'twister', 'meander', 'start_stop',
+                                             'turn_and_step', 'ball_toss')}
+ID_SAFE_TASKS = ('normal_walk', 'incline_walk', 'stairs', 'weighted_walk')
+OOD_DANGEROUS_TASKS = ('ball_toss', 'step_ups', 'tug_of_war', 'sit_to_stand')
+# The Science Robotics mode a Nature task (and direction) corresponds to (notebook 01, section 2); others are new.
+SCIROB_MODE = {('normal_walk', 'level'): 'LG', ('incline_walk', 'up'): 'RA', ('incline_walk', 'down'): 'RD',
+               ('stairs', 'up'): 'SA', ('stairs', 'down'): 'SD', ('curb_up', 'up'): 'SA', ('curb_down', 'down'): 'SD',
+               ('start_stop', 'none'): 'TR', ('poses', 'none'): 'ST'}
+INCLINE_POWER_W_KG = 0.1          # mean limb power (both legs) beyond which a ramp bout is ascent or descent
+BOUT_MIN_S = 2.0                  # in-task bouts shorter than this are too short to judge a direction
+
+
+def get_family(task: str) -> str:
+    """Task family of a Nature task."""
+    return next(family for family, tasks in TASK_FAMILIES.items() if task in tasks)
+
+
+def get_controller_class(task: str) -> str:
+    """'ID-safe' (cyclic: spline controller), 'OOD-dangerous' (exo off) or 'OOD-safe' (moment estimator)."""
+    result = 'OOD-safe'
+    if task in ID_SAFE_TASKS:
+        result = 'ID-safe'
+    elif task in OOD_DANGEROUS_TASKS:
+        result = 'OOD-dangerous'
+    return result
+
+
+def get_direction(task: str, stair_dir: str | None, flag: np.ndarray, limb_power_l: np.ndarray,
+                  limb_power_r: np.ndarray) -> np.ndarray:
+    """Per-sample movement direction of one recording: 'up', 'down', 'level', 'unclear' or 'none'.
+
+    Stairs take the readme's index parity, curbs their task name, level treadmill walking is 'level'. A ramp's
+    direction is not labelled, so each in-task bout (left flag, at least ``BOUT_MIN_S``) is 'up' or 'down' by the sign
+    of its mean limb power (W/kg, both legs; notebook 01, section 4) and 'unclear' in between or outside a bout.
+    Every other task is 'none'.
+    """
+    n = len(flag)
+    fixed = {'stairs': stair_dir, 'curb_up': 'up', 'curb_down': 'down', 'normal_walk': 'level'}
+    result = np.full(n, fixed.get(task) or 'none', dtype = object)
+    if task == 'incline_walk':
+        result[:] = 'unclear'
+        legs = np.stack([limb_power_l, limb_power_r])                                  # (2, n)
+        count = np.isfinite(legs).sum(axis = 0)
+        power = np.where(count > 0, np.nansum(legs, axis = 0) / np.maximum(count, 1), np.nan)   # (n,)
+        for start, end in sg.get_bouts(np.asarray(flag) > 0, int(BOUT_MIN_S * RATE_HZ)):
+            mean = np.nanmean(power[start:end]) if np.isfinite(power[start:end]).any() else 0.0
+            if abs(mean) > INCLINE_POWER_W_KG:
+                result[start:end] = 'up' if mean > 0 else 'down'
     return result
 
 

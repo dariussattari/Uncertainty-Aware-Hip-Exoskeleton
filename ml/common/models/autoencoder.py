@@ -88,11 +88,16 @@ class ConvAutoencoder(nn.Module):
 
     ``forward`` returns ``(reconstruction, latent)``. The latent is kept in its
     ``(batch, filters, time)`` shape; :meth:`encode` flattens it for LOF.
+
+    ``linear_latent=True`` ends the encoder at the last convolution, without its BatchNorm and
+    ReLU: the latent is then exactly the mean head of ``models.vae.ConvVAE`` (same trunk, a
+    19-tap convolution), the deterministic control of the Science Robotics VAE study.
     """
 
     def __init__(self, in_channels: int = 16, window: int = 200,
                  channels: tuple[int, ...] = CHANNELS, kernels: tuple[int, ...] = KERNELS,
-                 latent_filters: int = LATENT_FILTERS, pool: tuple[int, ...] = POOL):
+                 latent_filters: int = LATENT_FILTERS, pool: tuple[int, ...] = POOL,
+                 linear_latent: bool = False):
         super().__init__()
         if len(kernels) != len(channels) + 1:
             raise ValueError("need one kernel per conv layer (len(channels) + 1)")
@@ -115,7 +120,7 @@ class ConvAutoencoder(nn.Module):
             nn.BatchNorm1d(c2), nn.ReLU(),
             nn.AvgPool1d(pool[1]),                                     # 40 -> 8
             nn.Conv1d(c2, latent_filters, k3, padding=_same_pad(k3)),
-            nn.BatchNorm1d(latent_filters), nn.ReLU(),
+            *(() if linear_latent else (nn.BatchNorm1d(latent_filters), nn.ReLU())),
         )
 
         # decoder: mirror, upsampling where the encoder pooled

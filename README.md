@@ -218,6 +218,59 @@ and thigh pitch (gravity fused with the sagittal gyro). Evaluated on the Nature 
   the ranking holds: the spectral family is the only one that makes task families cluster more cleanly
   across people, and controller classes form no clusters in any space.
 
+**Nature awareness autoencoders** (`ml/nature/awareness/`, viewed in
+[`onboard/01_ae_latent_spaces.ipynb`](notebooks/nature/model_exploration/onboard/01_ae_latent_spaces.ipynb), with standalone
+3-D pages in `onboard/interactive/`). The ankle paper's conv
+autoencoder (`ml/common/models/autoencoder.py`) trained on the Nature data's ID-safe tasks (normal, incline and weighted
+walking, stairs) of 14 participants, 4 for validation and 4 held out, three seeds each, on two input settings: 1 s of
+the 16 raw channels, and 3 s of raw channels plus the seven spectral features as constant channels (the setting
+nature notebooks 02 and 03 found best; the second pooling stage is 15 so the latent stays 4 x 8 = 32 values).
+
+| model | inputs | validation MSE | scale-free L1 (1 = dense) | novelty units (of ~32) |
+|---|---|---|---|---|
+| vanilla | 1 s raw | 0.247 ± 0.005 | 0.90 | 0–1 |
+| sparse, λ 0.3 | 1 s raw | 0.313 ± 0.007 | 0.25 | 2 ± 1 |
+| vanilla | 3 s raw + spectral | 0.269 ± 0.002 | 0.84 | 0 |
+| sparse, λ 0.3 | 3 s raw + spectral | 0.306 ± 0.014 | 0.10 | 18 ± 7 |
+| sparse, λ 0.1 | 3 s raw + spectral | 0.285 ± 0.003 | 0.27 | 4 ± 5 |
+| vanilla, 8 x 4 latent | 3 s raw + spectral | 0.353 ± 0.008 | 0.61 | 1 ± 1 |
+| sparse, λ 0.1, 8 x 4 latent | 3 s raw + spectral | 0.358 ± 0.006 | 0.14 | 17 ± 8 |
+
+A novelty unit responds at least five times more strongly to some unseen task than to any training task. MSE compares
+only within an input setting.
+
+- The sparse variant adds λ x mean(z / RMS_batch(z)) per latent unit. A plain L1 term does not work in this model: the
+  decoder's BatchNorm makes reconstruction blind to the latent's scale, so plain L1 shrinks every unit without
+  sparsifying any. Validation computes the penalty from moments over the whole set (per batch it depends on window
+  order), recomputes BatchNorm statistics over 50 training batches first (running averages made the sparse models'
+  validation error jump by up to 0.09), and λ ramps up over 5 epochs (without it one seed silenced 24 of 32 units).
+- On 3 s + spectral inputs gait rings collapse into one walking cluster, unseen movement types sit apart, stair and ramp
+  direction begin to separate, and the sparse code holds on new people; on 1 s inputs it does not (sparsity 0.15 on
+  training people, 0.53 on new ones by epoch 15).
+- The λ 0.3 sparse latent's strongest units fire as one block (|r| 1.00 between the top two). A lower penalty
+  (λ 0.1) made it more redundant (3.1 against 4.5 effective directions on held-out people) and lost most novelty units;
+  reshaping the latent to 8 filters x 4 steps (`--latent 8x4`) tied (4.7) at a higher reconstruction cost. The
+  duplication is units firing together, which a per-unit penalty cannot see.
+- Novelty detection on the four test participants
+  ([`onboard/05_LOF_comparison.ipynb`](notebooks/nature/model_exploration/onboard/05_LOF_comparison.ipynb), which scores
+  every run under `runs/` and every score in `onboard/_novelty_scores.py`): LOF on the vanilla latents ranks unfamiliar
+  above familiar windows best (AUROC 0.893 with 3 s + spectral inputs, 0.887 with 1 s; OOD-dangerous tasks 0.968 with
+  1 s). The sparse latents score 0.77 to 0.85. At the ankle paper's threshold only 29 to 36% of unfamiliar windows are
+  flagged, and quiet tasks (standing poses, the ball toss) are rarely flagged by any latent.
+- Operating point on held-out people (notebook 05, section 6; `ml/nature/awareness/encode_split.py` encodes the
+  validation participants from each checkpoint, and `--check` reproduces the cluster export to 0.5% relative RMS): a
+  1% false-alarm target set on the four validation participants gives 1.7 to 2.0% on the four test participants, so
+  the familiar score level is wearer-specific. LOF on 16 principal components of the vanilla 1 s latent flags 34% of
+  unfamiliar and 53% of OOD-dangerous test windows at 1.7% false alarms (29% and 45% under the ankle rule; three
+  seeds, within their ±6 to ±10 point spread); fewer dimensions do not help the other latents. The false-alarm target
+  is the lever: 2% buys 44% and 63%, 5% buys 61% and 81%.
+- Run: `python ml/nature/awareness/ae_data.py` (arrays and window tables, about a minute), `bash
+  ml/nature/awareness/slurm/push.sh`, then on a login node `bash ml/nature/awareness/slurm/submit.sh [--inputs
+  raw_3s_spectral] [--args "--sparsity-weight 0.1 --latent 8x4"]` (a six-task array, one GPU and one core per task, 2 to 8 min each), then `bash
+  ml/nature/awareness/slurm/pull.sh` into `notebooks/nature/model_exploration/runs/ae/`. Training uses bf16 autocast on
+  CUDA: in fp32, cuDNN runs these convolutions as FFTs, 551 ms per step on an A100 against 23 ms.
+
+
 ---
 
 ## Setup
@@ -249,6 +302,7 @@ data/
   molinaro-raw/         34 subject folders of raw 200 Hz CSVs — gitignored, 6.1 GB
   nature/               Nature 2024 dataset, Complete variant (phase1-2/, phase3/) — gitignored, 88 GB
   cache/                trial inventory, Nature Parquet caches — gitignored
+  processed_nature/     Nature autoencoder arrays (ml/nature/awareness/ae_data.py) — gitignored
   processed/            windowed model-ready arrays + scaler + config — gitignored
 ml/
   common/               dataset-agnostic
@@ -263,13 +317,16 @@ ml/
     VAE/                VAE trainer and beta sweep (model in common/models/vae.py)
     awareness/          awareness pipeline: regime holdout, fault injection
   nature/               Nature 2024 dataset
-    nature_data.py      data access and Parquet caches in data/cache/nature/ (test_nature_data.py)
+    nature_data.py      data access, task labels and Parquet caches in data/cache/nature/ (test_nature_data.py)
+    awareness/          autoencoders: ae_data.py (arrays), train_ae.py, encode_split.py (held-out latents), test_ae.py, slurm/
 notebooks/
   sci_rob/
     data_exploration/   01 load, 02 build windows, 03 feature plots, 04 NIS, 05 synthetic targets
     model_exploration/  01–10: one notebook per model, then LOTO, UMAP and the awareness holdout
   nature/
     data_exploration/   01 dataset audit, 02 engineered features, 03 feature embeddings (PCA, UMAP)
+    model_exploration/  onboard/ latent spaces (01 autoencoders; interactive/ holds its 3-D pages), ml_interp/,
+                        runs/ (the pulled cluster runs)
 scripts/
   download_molinaro.sh  resumable parallel download from Zenodo
 ```

@@ -244,3 +244,11 @@ ml/sci_rob/VAE/slurm/logs/
 # awareness: cluster run outputs and SLURM logs
 ml/sci_rob/awareness/runs/
 ml/sci_rob/awareness/slurm/logs/
+
+# Nature awareness: arrays, cluster runs, logs, code stamp; pulled runs keep only their JSON summaries in git
+data/processed_nature/
+ml/nature/awareness/runs/
+ml/nature/awareness/slurm/logs/
+ml/nature/awareness/GIT_SHA
+notebooks/nature/model_exploration/runs/**/*.npz
+notebooks/nature/model_exploration/runs/**/*.pt
