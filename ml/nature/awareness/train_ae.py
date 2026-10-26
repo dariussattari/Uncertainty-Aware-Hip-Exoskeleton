@@ -4,13 +4,16 @@
     python ml/nature/awareness/train_ae.py --variant sparse --seed 0
     python ml/nature/awareness/train_ae.py --variant sparse --seed 0 --inputs raw_3s_spectral
     python ml/nature/awareness/train_ae.py --variant gaussian --seed 0
+    python ml/nature/awareness/train_ae.py --variant vanilla --seed 0 --train-class OOD-safe   # the training-class ablation
     python ml/nature/awareness/train_ae.py --variant vanilla --smoke      # wiring check on a few thousand windows
 
 The model is ``ml/common/models/autoencoder.py``'s ConvAutoencoder, the ankle paper's AE (16 channels x 200 samples
 -> 4 x 8 = 32 latent values), at this project's settings: Adam, learning rate 0.003, batch 1,024, early stopping with
 patience 5 on held-out participants. As in the ankle paper it trains on in-distribution windows only: the cyclic
 ID-safe tasks (normal, incline and weighted walking, stairs), in task, from the training participants. Arrays come
-from ``ae_data.py``.
+from ``ae_data.py``. The training-class ablation (``--train-class``, ``TRAIN_CLASSES``) trains instead on every safe
+movement (ID-safe + OOD-safe) or on the OOD-safe tasks alone, so that only the OOD-dangerous tasks are unfamiliar;
+early stopping then uses the validation participants' windows of the same classes.
 
 Inputs (``--inputs``; tables from ``ae_data.py``)
   raw_1s           the 16 raw channels over 1 s (200 samples), as in the ankle paper.
@@ -34,9 +37,10 @@ Variants
 
 Outputs, under ``<out-root>/<run name>/`` (``get_run_name``: variant, non-default inputs, lambda and latent, seed): config.json,
 history.json, summary.json, best.pt (weights and the channel standardization), last.pt (weights, optimizer, RNG states,
-epoch) and latents.npz (latent and per-window reconstruction MSE for every in-task window of the test participants,
+epoch), latents.npz (latent and per-window reconstruction MSE for every in-task window of the test participants,
 plus a sample of training windows; ``rows`` index the input setting's window table, ``rec`` and ``end`` name each
-window in any table).
+window in any table) and latents_val.npz (every in-task window of the validation participants, the format
+``encode_split.py`` writes for older runs). A run whose summary.json exists is skipped unless ``--force``.
 """
 import argparse
 from dataclasses import asdict, dataclass, replace
@@ -81,7 +85,7 @@ class AeConfig:
     max_epochs: int = 200
     patience: int = 5
     seed: int = 0
-    train_class: str = 'ID-safe'                 # controller class the AE learns
+    train_class: str = 'ID-safe'                 # controller classes the AE learns ('+'-joined; TRAIN_CLASSES)
     inputs: str = 'raw_1s'                       # input setting (ae_data.INPUTS); set with INPUTS below
     latent: str = '4x8'                          # latent filters x time steps (LATENTS); both shapes hold 32 values
     latent_filters: int = 4
@@ -94,13 +98,17 @@ class AeConfig:
     export_train_windows: int = 20_000           # training windows exported beside the test participants
 
 
+# controller classes a run can train on ('+' joins classes): the ankle paper's ID-safe tasks, every safe movement, or the
+# OOD-safe tasks alone (when an upstream heuristic recognizes ID movement). OOD-dangerous is never trained on.
+TRAIN_CLASSES = ('ID-safe', 'ID-safe+OOD-safe', 'OOD-safe')
 VARIANTS = {'vanilla': {'sparsity_weight': 0.0}, 'sparse': {'sparsity_weight': SPARSITY_WEIGHT},
             'gaussian': {'sparsity_weight': 0.0, 'linear_latent': True, 'objective': 'gaussian_nll'}}
-INPUTS = {'raw_1s': {'pool': (5, 5)}, 'raw_3s_spectral': {'pool': (5, 15)}}        # both give a 4 x 8 latent
+INPUTS = {'raw_1s': {'pool': (5, 5)}, 'raw_3s_spectral': {'pool': (5, 15)},        # every setting gives a 4 x 8 latent
+          'raw_1s_spectral': {'pool': (5, 5)}, 'raw_3s': {'pool': (5, 15)}}       # the input ablation (ae_data.ABLATION_INPUTS)
 # The same 32 latent values as 8 filters x 4 time steps: on 3 s inputs a step then covers 750 ms, and the 4 x 8 latent's
 # neighbouring steps of one filter were strongly correlated (|r| 0.49-0.65), leaving about 4 effective directions.
-LATENTS = {'4x8': {'latent_filters': 4, 'pools': {'raw_1s': (5, 5), 'raw_3s_spectral': (5, 15)}},
-           '8x4': {'latent_filters': 8, 'pools': {'raw_1s': (5, 10), 'raw_3s_spectral': (5, 30)}}}
+LATENTS = {'4x8': {'latent_filters': 4, 'pools': {k: v['pool'] for k, v in INPUTS.items()}},
+           '8x4': {'latent_filters': 8, 'pools': {'raw_1s': (5, 10), 'raw_3s_spectral': (5, 30), 'raw_1s_spectral': (5, 10), 'raw_3s': (5, 30)}}}
 SMOKE = {'max_epochs': 2, 'patience': 1, 'max_train_windows': 4_096, 'stats_samples': 400_000, 'export_train_windows': 512,
          'bn_batches': 2, 'sparsity_warmup_epochs': 1}
 
@@ -144,10 +152,11 @@ def get_batch(data: AeData, rows: torch.Tensor) -> torch.Tensor:
 
 
 def get_set_rows(windows: pd.DataFrame, split: str, train_class: str | None) -> npt.NDArray[np.int64]:
-    """Rows of in-task windows of one participant split, optionally only one controller class."""
+    """Rows of in-task windows of one participant split, optionally only some controller classes ('+'-joined, e.g.
+    'ID-safe+OOD-safe')."""
     keep = (windows['split'] == split) & windows['in_task']
     if train_class is not None:
-        keep &= windows['controller_class'] == train_class
+        keep &= windows['controller_class'].isin(train_class.split('+'))
     return np.flatnonzero(keep.to_numpy())
 
 
@@ -266,6 +275,8 @@ def recalibrate_batchnorm(model: ConvAutoencoder, data: AeData, cfg: AeConfig, g
     normalizes with each batch's own statistics.
     """
     norms = [m for m in model.modules() if isinstance(m, torch.nn.modules.batchnorm._BatchNorm)]
+    if not norms:                                                              # LSTM and Transformer VAEs: no BatchNorm
+        return
     momenta = [m.momentum for m in norms]
     for m in norms:
         m.reset_running_stats()
@@ -350,14 +361,10 @@ def train(model: ConvAutoencoder, data: AeData, cfg: AeConfig, out: Path, genera
 
 
 @torch.inference_mode()
-def export_latents(model: ConvAutoencoder, data: AeData, cfg: AeConfig, rng: np.random.Generator,
-                   out: Path) -> int:
-    """latents.npz: every in-task test-participant window (all tasks) and a sample of training windows."""
+def encode_rows(model: ConvAutoencoder, data: AeData, rows: npt.NDArray[np.int64], cfg: AeConfig
+                ) -> tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
+    """Latents (N, 32) and per-window reconstruction MSE (N,) of some window rows."""
     model.eval()
-    test_rows = get_set_rows(data.windows, 'test', None)
-    train_rows = get_set_rows(data.windows, 'train', cfg.train_class)
-    train_rows = np.sort(rng.choice(train_rows, min(cfg.export_train_windows, len(train_rows)), replace = False))
-    rows = np.concatenate([test_rows, train_rows])
     device_rows = torch.from_numpy(rows.astype(np.int64)).to(data.train.device)
     z_parts, err_parts = [], []
     for batch in device_rows.split(cfg.batch_size):
@@ -365,15 +372,31 @@ def export_latents(model: ConvAutoencoder, data: AeData, cfg: AeConfig, rng: np.
         with get_autocast(device_rows.device, cfg):
             x_hat, z = model(x)
         x_hat = x_hat.float()
-        z_parts.append(z.flatten(1).float().cpu().numpy())                     # (B, 32)
+        z_parts.append(z.flatten(1).float().cpu().numpy())                     # (B, ...) -> (B, 32)
         err_parts.append(((x_hat - x) ** 2).mean(dim = (1, 2)).float().cpu().numpy())
     z_all, err = np.concatenate(z_parts), np.concatenate(err_parts)
     if not (np.isfinite(z_all).all() and np.isfinite(err).all()):
         raise FloatingPointError('non-finite latents or reconstruction errors in the export')
-    np.savez(out / 'latents.npz', rows = rows, rec = data.windows['rec'].to_numpy()[rows], end = data.windows['end'].to_numpy()[rows],
-             z = z_all.astype(np.float32), recon_mse = err.astype(np.float32),
-             is_train = np.r_[np.zeros(len(test_rows), bool), np.ones(len(train_rows), bool)])
-    return len(rows)
+    return z_all.astype(np.float32), err.astype(np.float32)
+
+
+def export_latents(model: ConvAutoencoder, data: AeData, cfg: AeConfig, rng: np.random.Generator,
+                   out: Path) -> dict[str, int]:
+    """latents.npz: every in-task test-participant window (all tasks) and a sample of training windows;
+    latents_val.npz: every in-task validation-participant window (all tasks)."""
+    test_rows = get_set_rows(data.windows, 'test', None)
+    train_rows = get_set_rows(data.windows, 'train', cfg.train_class)
+    train_rows = np.sort(rng.choice(train_rows, min(cfg.export_train_windows, len(train_rows)), replace = False))
+    val_rows = get_set_rows(data.windows, 'val', None)
+    counts = {}
+    for name, rows, is_train in (('latents.npz', np.concatenate([test_rows, train_rows]),
+                                  np.r_[np.zeros(len(test_rows), bool), np.ones(len(train_rows), bool)]),
+                                 ('latents_val.npz', val_rows, np.zeros(len(val_rows), bool))):
+        z_all, err = encode_rows(model, data, rows, cfg)
+        np.savez(out / name, rows = rows, rec = data.windows['rec'].to_numpy()[rows], end = data.windows['end'].to_numpy()[rows],
+                 z = z_all, recon_mse = err, is_train = is_train)
+        counts[name] = len(rows)
+    return counts
 
 
 def get_git_sha() -> str:
@@ -410,18 +433,23 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument('--inputs', choices = sorted(INPUTS), default = 'raw_1s')
     parser.add_argument('--sparsity-weight', type = float, default = None, help = f'lambda of the sparse variant (default {SPARSITY_WEIGHT})')
     parser.add_argument('--latent', choices = sorted(LATENTS), default = '4x8', help = 'latent filters x time steps (32 values either way)')
+    parser.add_argument('--train-class', choices = TRAIN_CLASSES, default = 'ID-safe', help = 'controller classes to train on')
     parser.add_argument('--data-dir', type = Path,
                         default = Path(os.environ.get('HIPEXO_NATURE_AE_DATA', HERE.parents[2] / 'data' / 'processed_nature' / 'ae')))
     parser.add_argument('--out-root', type = Path, default = HERE / 'runs' / 'ae')
     parser.add_argument('--device', default = None)
     parser.add_argument('--smoke', action = 'store_true')
+    parser.add_argument('--force', action = 'store_true', help = 'retrain a run whose summary.json exists')
     a = parser.parse_args(argv)
-    cfg = replace(AeConfig(variant = a.variant, seed = a.seed, inputs = a.inputs, **VARIANTS[a.variant], **INPUTS[a.inputs]),
-                  **(SMOKE if a.smoke else {}))
+    cfg = replace(AeConfig(variant = a.variant, seed = a.seed, inputs = a.inputs, train_class = a.train_class, **VARIANTS[a.variant],
+                           **INPUTS[a.inputs]), **(SMOKE if a.smoke else {}))
     if a.sparsity_weight is not None and a.variant == 'sparse':          # the vanilla variant keeps lambda 0
         cfg = replace(cfg, sparsity_weight = a.sparsity_weight)
     cfg = replace(cfg, latent = a.latent, latent_filters = LATENTS[a.latent]['latent_filters'], pool = LATENTS[a.latent]['pools'][a.inputs])
     out = a.out_root / f'{get_run_name(cfg)}{"_smoke" if a.smoke else ""}'
+    if (out / 'summary.json').exists() and not a.force:
+        print(f'already complete: {out} (--force to retrain)')
+        return
     out.mkdir(parents = True, exist_ok = True)
     logging.basicConfig(level = logging.INFO, format = '%(asctime)s %(message)s', datefmt = '%H:%M:%S',
                         handlers = [logging.StreamHandler(sys.stdout), logging.FileHandler(out / 'train.log', mode = 'w')])
@@ -436,16 +464,17 @@ def main(argv: list[str] | None = None) -> None:
     provenance = {'git_sha': get_git_sha(), 'data_version': data.data_version, 'device': str(device),
                   'torch': torch.__version__, 'n_train': len(data.train), 'n_val': len(data.val)}
     (out / 'config.json').write_text(json.dumps({**asdict(cfg), **provenance}, indent = 2))
-    LOG.info('%s seed %d | %s (%d inputs x %d samples, pool %s, latent %s) | lambda %g | %s | train %d, val %d windows | data %s, code %s',
-             cfg.variant, cfg.seed, cfg.inputs, data.n_inputs, data.window, cfg.pool, cfg.latent, cfg.sparsity_weight, device,
-             len(data.train), len(data.val), data.data_version, provenance['git_sha'])
+    LOG.info('%s seed %d | %s (%d inputs x %d samples, pool %s, latent %s) | lambda %g | trained on %s | %s | train %d, val %d windows | '
+             'data %s, code %s', cfg.variant, cfg.seed, cfg.inputs, data.n_inputs, data.window, cfg.pool, cfg.latent, cfg.sparsity_weight,
+             cfg.train_class, device, len(data.train), len(data.val), data.data_version, provenance['git_sha'])
     history = train(model, data, cfg, out, generator)
     (out / 'history.json').write_text(json.dumps(history, indent = 2))
-    n_export = export_latents(model, data, cfg, rng, out)
+    counts = export_latents(model, data, cfg, rng, out)
     best = min(history, key = lambda h: h['val_objective'])
-    summary = {**provenance, 'variant': cfg.variant, 'inputs': cfg.inputs, 'seed': cfg.seed, 'sparsity_weight': cfg.sparsity_weight,
+    summary = {**provenance, 'variant': cfg.variant, 'inputs': cfg.inputs, 'train_class': cfg.train_class, 'seed': cfg.seed,
+               'sparsity_weight': cfg.sparsity_weight,
                'best_epoch': best['epoch'], 'epochs_run': len(history),
-               **{k: v for k, v in best.items() if k.startswith('val_')}, 'exported_windows': n_export,
+               **{k: v for k, v in best.items() if k.startswith('val_')}, 'exported_windows': counts,
                'minutes': round((time.time() - t0) / 60, 2)}
     (out / 'summary.json').write_text(json.dumps(summary, indent = 2))
     LOG.info('done in %.1f min: best epoch %d, val MSE %.5f, active %.2f, dead units %d -> %s', summary['minutes'],

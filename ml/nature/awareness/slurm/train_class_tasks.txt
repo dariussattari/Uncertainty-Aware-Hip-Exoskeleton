@@ -1,0 +1,420 @@
+train_ae.py --variant gaussian --seed 0 --inputs raw_1s_spectral --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant gaussian --seed 1 --inputs raw_1s_spectral --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant gaussian --seed 2 --inputs raw_1s_spectral --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant gaussian --seed 0 --inputs raw_3s --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant gaussian --seed 1 --inputs raw_3s --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant gaussian --seed 2 --inputs raw_3s --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant gaussian --seed 0 --inputs raw_3s_spectral --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant gaussian --seed 1 --inputs raw_3s_spectral --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant gaussian --seed 2 --inputs raw_3s_spectral --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant gaussian --seed 0 --inputs raw_1s --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant gaussian --seed 1 --inputs raw_1s --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant gaussian --seed 2 --inputs raw_1s --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant sparse --seed 0 --inputs raw_1s_spectral --sparsity-weight 0.3 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant sparse --seed 1 --inputs raw_1s_spectral --sparsity-weight 0.3 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant sparse --seed 2 --inputs raw_1s_spectral --sparsity-weight 0.3 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant sparse --seed 0 --inputs raw_3s --sparsity-weight 0.3 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant sparse --seed 1 --inputs raw_3s --sparsity-weight 0.3 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant sparse --seed 2 --inputs raw_3s --sparsity-weight 0.3 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant sparse --seed 0 --inputs raw_3s_spectral --sparsity-weight 0.1 --latent 8x4 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant sparse --seed 1 --inputs raw_3s_spectral --sparsity-weight 0.1 --latent 8x4 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant sparse --seed 2 --inputs raw_3s_spectral --sparsity-weight 0.1 --latent 8x4 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant sparse --seed 0 --inputs raw_3s_spectral --sparsity-weight 0.1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant sparse --seed 1 --inputs raw_3s_spectral --sparsity-weight 0.1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant sparse --seed 2 --inputs raw_3s_spectral --sparsity-weight 0.1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant sparse --seed 0 --inputs raw_3s_spectral --sparsity-weight 0.3 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant sparse --seed 1 --inputs raw_3s_spectral --sparsity-weight 0.3 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant sparse --seed 2 --inputs raw_3s_spectral --sparsity-weight 0.3 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant sparse --seed 0 --inputs raw_1s --sparsity-weight 0.3 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant sparse --seed 1 --inputs raw_1s --sparsity-weight 0.3 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant sparse --seed 2 --inputs raw_1s --sparsity-weight 0.3 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant vanilla --seed 0 --inputs raw_1s_spectral --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant vanilla --seed 1 --inputs raw_1s_spectral --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant vanilla --seed 2 --inputs raw_1s_spectral --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant vanilla --seed 0 --inputs raw_3s --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant vanilla --seed 1 --inputs raw_3s --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant vanilla --seed 2 --inputs raw_3s --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant vanilla --seed 0 --inputs raw_3s_spectral --latent 8x4 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant vanilla --seed 1 --inputs raw_3s_spectral --latent 8x4 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant vanilla --seed 2 --inputs raw_3s_spectral --latent 8x4 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant vanilla --seed 0 --inputs raw_3s_spectral --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant vanilla --seed 1 --inputs raw_3s_spectral --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant vanilla --seed 2 --inputs raw_3s_spectral --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant vanilla --seed 0 --inputs raw_1s --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant vanilla --seed 1 --inputs raw_1s --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_ae.py --variant vanilla --seed 2 --inputs raw_1s --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/ae
+train_vae.py --arch lstm --inputs raw_1s --beta 128 --decoder-variance fixed --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s --beta 128 --decoder-variance fixed --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s --beta 128 --decoder-variance fixed --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s --beta 1 --decoder-variance fixed --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s --beta 1 --decoder-variance fixed --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s --beta 1 --decoder-variance fixed --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s --beta 1 --decoder-variance learned --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s --beta 1 --decoder-variance learned --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s --beta 1 --decoder-variance learned --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s --beta 32 --decoder-variance fixed --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s --beta 32 --decoder-variance fixed --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s --beta 32 --decoder-variance fixed --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s_spectral --beta 128 --decoder-variance fixed --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s_spectral --beta 128 --decoder-variance fixed --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s_spectral --beta 128 --decoder-variance fixed --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s_spectral --beta 1 --decoder-variance fixed --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s_spectral --beta 1 --decoder-variance fixed --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s_spectral --beta 1 --decoder-variance fixed --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s_spectral --beta 1 --decoder-variance learned --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s_spectral --beta 1 --decoder-variance learned --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s_spectral --beta 1 --decoder-variance learned --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s_spectral --beta 32 --decoder-variance fixed --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s_spectral --beta 32 --decoder-variance fixed --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s_spectral --beta 32 --decoder-variance fixed --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s --beta 128 --decoder-variance fixed --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s --beta 128 --decoder-variance fixed --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s --beta 128 --decoder-variance fixed --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s --beta 1 --decoder-variance fixed --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s --beta 1 --decoder-variance fixed --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s --beta 1 --decoder-variance fixed --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s --beta 1 --decoder-variance learned --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s --beta 1 --decoder-variance learned --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s --beta 1 --decoder-variance learned --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s --beta 32 --decoder-variance fixed --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s --beta 32 --decoder-variance fixed --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s --beta 32 --decoder-variance fixed --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s_spectral --beta 128 --decoder-variance fixed --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s_spectral --beta 128 --decoder-variance fixed --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s_spectral --beta 128 --decoder-variance fixed --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s_spectral --beta 1 --decoder-variance fixed --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s_spectral --beta 1 --decoder-variance fixed --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s_spectral --beta 1 --decoder-variance fixed --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s_spectral --beta 1 --decoder-variance learned --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s_spectral --beta 1 --decoder-variance learned --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s_spectral --beta 1 --decoder-variance learned --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s_spectral --beta 32 --decoder-variance fixed --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s_spectral --beta 32 --decoder-variance fixed --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s_spectral --beta 32 --decoder-variance fixed --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 128 --decoder-variance fixed --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 128 --decoder-variance fixed --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 128 --decoder-variance fixed --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 128 --decoder-variance learned --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 128 --decoder-variance learned --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 128 --decoder-variance learned --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 1 --decoder-variance fixed --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 1 --decoder-variance fixed --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 1 --decoder-variance fixed --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 1 --decoder-variance learned --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 1 --decoder-variance learned --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 1 --decoder-variance learned --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 32 --decoder-variance fixed --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 32 --decoder-variance fixed --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 32 --decoder-variance fixed --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 32 --decoder-variance learned --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 32 --decoder-variance learned --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 32 --decoder-variance learned --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 64 --decoder-variance fixed --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 64 --decoder-variance fixed --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 64 --decoder-variance fixed --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 64 --decoder-variance learned --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 64 --decoder-variance learned --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 64 --decoder-variance learned --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 8 --decoder-variance fixed --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 8 --decoder-variance fixed --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 8 --decoder-variance fixed --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 8 --decoder-variance learned --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 8 --decoder-variance learned --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 8 --decoder-variance learned --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s_spectral --beta 128 --decoder-variance fixed --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s_spectral --beta 128 --decoder-variance fixed --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s_spectral --beta 128 --decoder-variance fixed --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s_spectral --beta 1 --decoder-variance fixed --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s_spectral --beta 1 --decoder-variance fixed --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s_spectral --beta 1 --decoder-variance fixed --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s_spectral --beta 1 --decoder-variance learned --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s_spectral --beta 1 --decoder-variance learned --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s_spectral --beta 1 --decoder-variance learned --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s_spectral --beta 32 --decoder-variance fixed --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s_spectral --beta 32 --decoder-variance fixed --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s_spectral --beta 32 --decoder-variance fixed --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s --beta 128 --decoder-variance fixed --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s --beta 128 --decoder-variance fixed --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s --beta 128 --decoder-variance fixed --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s --beta 1 --decoder-variance fixed --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s --beta 1 --decoder-variance fixed --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s --beta 1 --decoder-variance fixed --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s --beta 1 --decoder-variance learned --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s --beta 1 --decoder-variance learned --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s --beta 1 --decoder-variance learned --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s --beta 32 --decoder-variance fixed --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s --beta 32 --decoder-variance fixed --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s --beta 32 --decoder-variance fixed --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s_spectral --beta 128 --decoder-variance fixed --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s_spectral --beta 128 --decoder-variance fixed --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s_spectral --beta 128 --decoder-variance fixed --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s_spectral --beta 1 --decoder-variance fixed --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s_spectral --beta 1 --decoder-variance fixed --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s_spectral --beta 1 --decoder-variance fixed --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s_spectral --beta 1 --decoder-variance learned --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s_spectral --beta 1 --decoder-variance learned --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s_spectral --beta 1 --decoder-variance learned --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s_spectral --beta 32 --decoder-variance fixed --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s_spectral --beta 32 --decoder-variance fixed --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s_spectral --beta 32 --decoder-variance fixed --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s_spectral --beta 64 --decoder-variance fixed --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s_spectral --beta 64 --decoder-variance fixed --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s_spectral --beta 64 --decoder-variance fixed --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s --beta 128 --decoder-variance fixed --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s --beta 128 --decoder-variance fixed --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s --beta 128 --decoder-variance fixed --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s --beta 1 --decoder-variance fixed --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s --beta 1 --decoder-variance fixed --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s --beta 1 --decoder-variance fixed --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s --beta 1 --decoder-variance learned --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s --beta 1 --decoder-variance learned --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s --beta 1 --decoder-variance learned --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s --beta 32 --decoder-variance fixed --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s --beta 32 --decoder-variance fixed --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s --beta 32 --decoder-variance fixed --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s_spectral --beta 128 --decoder-variance fixed --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s_spectral --beta 128 --decoder-variance fixed --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s_spectral --beta 128 --decoder-variance fixed --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s_spectral --beta 1 --decoder-variance fixed --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s_spectral --beta 1 --decoder-variance fixed --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s_spectral --beta 1 --decoder-variance fixed --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s_spectral --beta 1 --decoder-variance learned --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s_spectral --beta 1 --decoder-variance learned --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s_spectral --beta 1 --decoder-variance learned --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s_spectral --beta 32 --decoder-variance fixed --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s_spectral --beta 32 --decoder-variance fixed --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s_spectral --beta 32 --decoder-variance fixed --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s --beta 128 --decoder-variance fixed --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s --beta 128 --decoder-variance fixed --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s --beta 128 --decoder-variance fixed --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s --beta 1 --decoder-variance fixed --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s --beta 1 --decoder-variance fixed --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s --beta 1 --decoder-variance fixed --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s --beta 1 --decoder-variance learned --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s --beta 1 --decoder-variance learned --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s --beta 1 --decoder-variance learned --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s --beta 32 --decoder-variance fixed --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s --beta 32 --decoder-variance fixed --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s --beta 32 --decoder-variance fixed --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s_spectral --beta 128 --decoder-variance fixed --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s_spectral --beta 128 --decoder-variance fixed --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s_spectral --beta 128 --decoder-variance fixed --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s_spectral --beta 1 --decoder-variance fixed --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s_spectral --beta 1 --decoder-variance fixed --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s_spectral --beta 1 --decoder-variance fixed --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s_spectral --beta 1 --decoder-variance learned --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s_spectral --beta 1 --decoder-variance learned --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s_spectral --beta 1 --decoder-variance learned --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s_spectral --beta 32 --decoder-variance fixed --seed 0 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s_spectral --beta 32 --decoder-variance fixed --seed 1 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s_spectral --beta 32 --decoder-variance fixed --seed 2 --train-class ID-safe+OOD-safe --out-root ml/nature/awareness/runs_train_class/id_ood_safe/vae
+train_ae.py --variant gaussian --seed 0 --inputs raw_1s_spectral --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant gaussian --seed 1 --inputs raw_1s_spectral --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant gaussian --seed 2 --inputs raw_1s_spectral --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant gaussian --seed 0 --inputs raw_3s --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant gaussian --seed 1 --inputs raw_3s --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant gaussian --seed 2 --inputs raw_3s --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant gaussian --seed 0 --inputs raw_3s_spectral --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant gaussian --seed 1 --inputs raw_3s_spectral --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant gaussian --seed 2 --inputs raw_3s_spectral --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant gaussian --seed 0 --inputs raw_1s --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant gaussian --seed 1 --inputs raw_1s --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant gaussian --seed 2 --inputs raw_1s --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant sparse --seed 0 --inputs raw_1s_spectral --sparsity-weight 0.3 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant sparse --seed 1 --inputs raw_1s_spectral --sparsity-weight 0.3 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant sparse --seed 2 --inputs raw_1s_spectral --sparsity-weight 0.3 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant sparse --seed 0 --inputs raw_3s --sparsity-weight 0.3 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant sparse --seed 1 --inputs raw_3s --sparsity-weight 0.3 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant sparse --seed 2 --inputs raw_3s --sparsity-weight 0.3 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant sparse --seed 0 --inputs raw_3s_spectral --sparsity-weight 0.1 --latent 8x4 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant sparse --seed 1 --inputs raw_3s_spectral --sparsity-weight 0.1 --latent 8x4 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant sparse --seed 2 --inputs raw_3s_spectral --sparsity-weight 0.1 --latent 8x4 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant sparse --seed 0 --inputs raw_3s_spectral --sparsity-weight 0.1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant sparse --seed 1 --inputs raw_3s_spectral --sparsity-weight 0.1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant sparse --seed 2 --inputs raw_3s_spectral --sparsity-weight 0.1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant sparse --seed 0 --inputs raw_3s_spectral --sparsity-weight 0.3 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant sparse --seed 1 --inputs raw_3s_spectral --sparsity-weight 0.3 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant sparse --seed 2 --inputs raw_3s_spectral --sparsity-weight 0.3 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant sparse --seed 0 --inputs raw_1s --sparsity-weight 0.3 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant sparse --seed 1 --inputs raw_1s --sparsity-weight 0.3 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant sparse --seed 2 --inputs raw_1s --sparsity-weight 0.3 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant vanilla --seed 0 --inputs raw_1s_spectral --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant vanilla --seed 1 --inputs raw_1s_spectral --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant vanilla --seed 2 --inputs raw_1s_spectral --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant vanilla --seed 0 --inputs raw_3s --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant vanilla --seed 1 --inputs raw_3s --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant vanilla --seed 2 --inputs raw_3s --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant vanilla --seed 0 --inputs raw_3s_spectral --latent 8x4 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant vanilla --seed 1 --inputs raw_3s_spectral --latent 8x4 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant vanilla --seed 2 --inputs raw_3s_spectral --latent 8x4 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant vanilla --seed 0 --inputs raw_3s_spectral --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant vanilla --seed 1 --inputs raw_3s_spectral --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant vanilla --seed 2 --inputs raw_3s_spectral --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant vanilla --seed 0 --inputs raw_1s --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant vanilla --seed 1 --inputs raw_1s --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_ae.py --variant vanilla --seed 2 --inputs raw_1s --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/ae
+train_vae.py --arch lstm --inputs raw_1s --beta 128 --decoder-variance fixed --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s --beta 128 --decoder-variance fixed --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s --beta 128 --decoder-variance fixed --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s --beta 1 --decoder-variance fixed --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s --beta 1 --decoder-variance fixed --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s --beta 1 --decoder-variance fixed --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s --beta 1 --decoder-variance learned --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s --beta 1 --decoder-variance learned --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s --beta 1 --decoder-variance learned --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s --beta 32 --decoder-variance fixed --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s --beta 32 --decoder-variance fixed --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s --beta 32 --decoder-variance fixed --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s_spectral --beta 128 --decoder-variance fixed --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s_spectral --beta 128 --decoder-variance fixed --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s_spectral --beta 128 --decoder-variance fixed --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s_spectral --beta 1 --decoder-variance fixed --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s_spectral --beta 1 --decoder-variance fixed --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s_spectral --beta 1 --decoder-variance fixed --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s_spectral --beta 1 --decoder-variance learned --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s_spectral --beta 1 --decoder-variance learned --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s_spectral --beta 1 --decoder-variance learned --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s_spectral --beta 32 --decoder-variance fixed --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s_spectral --beta 32 --decoder-variance fixed --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_1s_spectral --beta 32 --decoder-variance fixed --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s --beta 128 --decoder-variance fixed --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s --beta 128 --decoder-variance fixed --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s --beta 128 --decoder-variance fixed --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s --beta 1 --decoder-variance fixed --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s --beta 1 --decoder-variance fixed --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s --beta 1 --decoder-variance fixed --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s --beta 1 --decoder-variance learned --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s --beta 1 --decoder-variance learned --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s --beta 1 --decoder-variance learned --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s --beta 32 --decoder-variance fixed --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s --beta 32 --decoder-variance fixed --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s --beta 32 --decoder-variance fixed --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s_spectral --beta 128 --decoder-variance fixed --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s_spectral --beta 128 --decoder-variance fixed --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s_spectral --beta 128 --decoder-variance fixed --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s_spectral --beta 1 --decoder-variance fixed --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s_spectral --beta 1 --decoder-variance fixed --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s_spectral --beta 1 --decoder-variance fixed --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s_spectral --beta 1 --decoder-variance learned --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s_spectral --beta 1 --decoder-variance learned --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s_spectral --beta 1 --decoder-variance learned --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s_spectral --beta 32 --decoder-variance fixed --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s_spectral --beta 32 --decoder-variance fixed --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch lstm --inputs raw_3s_spectral --beta 32 --decoder-variance fixed --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 128 --decoder-variance fixed --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 128 --decoder-variance fixed --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 128 --decoder-variance fixed --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 128 --decoder-variance learned --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 128 --decoder-variance learned --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 128 --decoder-variance learned --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 1 --decoder-variance fixed --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 1 --decoder-variance fixed --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 1 --decoder-variance fixed --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 1 --decoder-variance learned --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 1 --decoder-variance learned --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 1 --decoder-variance learned --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 32 --decoder-variance fixed --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 32 --decoder-variance fixed --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 32 --decoder-variance fixed --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 32 --decoder-variance learned --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 32 --decoder-variance learned --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 32 --decoder-variance learned --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 64 --decoder-variance fixed --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 64 --decoder-variance fixed --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 64 --decoder-variance fixed --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 64 --decoder-variance learned --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 64 --decoder-variance learned --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 64 --decoder-variance learned --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 8 --decoder-variance fixed --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 8 --decoder-variance fixed --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 8 --decoder-variance fixed --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 8 --decoder-variance learned --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 8 --decoder-variance learned --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s --beta 8 --decoder-variance learned --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s_spectral --beta 128 --decoder-variance fixed --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s_spectral --beta 128 --decoder-variance fixed --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s_spectral --beta 128 --decoder-variance fixed --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s_spectral --beta 1 --decoder-variance fixed --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s_spectral --beta 1 --decoder-variance fixed --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s_spectral --beta 1 --decoder-variance fixed --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s_spectral --beta 1 --decoder-variance learned --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s_spectral --beta 1 --decoder-variance learned --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s_spectral --beta 1 --decoder-variance learned --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s_spectral --beta 32 --decoder-variance fixed --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s_spectral --beta 32 --decoder-variance fixed --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_1s_spectral --beta 32 --decoder-variance fixed --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s --beta 128 --decoder-variance fixed --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s --beta 128 --decoder-variance fixed --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s --beta 128 --decoder-variance fixed --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s --beta 1 --decoder-variance fixed --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s --beta 1 --decoder-variance fixed --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s --beta 1 --decoder-variance fixed --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s --beta 1 --decoder-variance learned --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s --beta 1 --decoder-variance learned --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s --beta 1 --decoder-variance learned --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s --beta 32 --decoder-variance fixed --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s --beta 32 --decoder-variance fixed --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s --beta 32 --decoder-variance fixed --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s_spectral --beta 128 --decoder-variance fixed --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s_spectral --beta 128 --decoder-variance fixed --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s_spectral --beta 128 --decoder-variance fixed --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s_spectral --beta 1 --decoder-variance fixed --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s_spectral --beta 1 --decoder-variance fixed --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s_spectral --beta 1 --decoder-variance fixed --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s_spectral --beta 1 --decoder-variance learned --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s_spectral --beta 1 --decoder-variance learned --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s_spectral --beta 1 --decoder-variance learned --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s_spectral --beta 32 --decoder-variance fixed --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s_spectral --beta 32 --decoder-variance fixed --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s_spectral --beta 32 --decoder-variance fixed --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s_spectral --beta 64 --decoder-variance fixed --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s_spectral --beta 64 --decoder-variance fixed --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch conv --inputs raw_3s_spectral --beta 64 --decoder-variance fixed --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s --beta 128 --decoder-variance fixed --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s --beta 128 --decoder-variance fixed --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s --beta 128 --decoder-variance fixed --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s --beta 1 --decoder-variance fixed --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s --beta 1 --decoder-variance fixed --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s --beta 1 --decoder-variance fixed --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s --beta 1 --decoder-variance learned --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s --beta 1 --decoder-variance learned --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s --beta 1 --decoder-variance learned --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s --beta 32 --decoder-variance fixed --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s --beta 32 --decoder-variance fixed --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s --beta 32 --decoder-variance fixed --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s_spectral --beta 128 --decoder-variance fixed --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s_spectral --beta 128 --decoder-variance fixed --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s_spectral --beta 128 --decoder-variance fixed --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s_spectral --beta 1 --decoder-variance fixed --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s_spectral --beta 1 --decoder-variance fixed --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s_spectral --beta 1 --decoder-variance fixed --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s_spectral --beta 1 --decoder-variance learned --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s_spectral --beta 1 --decoder-variance learned --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s_spectral --beta 1 --decoder-variance learned --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s_spectral --beta 32 --decoder-variance fixed --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s_spectral --beta 32 --decoder-variance fixed --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_1s_spectral --beta 32 --decoder-variance fixed --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s --beta 128 --decoder-variance fixed --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s --beta 128 --decoder-variance fixed --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s --beta 128 --decoder-variance fixed --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s --beta 1 --decoder-variance fixed --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s --beta 1 --decoder-variance fixed --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s --beta 1 --decoder-variance fixed --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s --beta 1 --decoder-variance learned --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s --beta 1 --decoder-variance learned --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s --beta 1 --decoder-variance learned --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s --beta 32 --decoder-variance fixed --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s --beta 32 --decoder-variance fixed --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s --beta 32 --decoder-variance fixed --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s_spectral --beta 128 --decoder-variance fixed --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s_spectral --beta 128 --decoder-variance fixed --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s_spectral --beta 128 --decoder-variance fixed --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s_spectral --beta 1 --decoder-variance fixed --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s_spectral --beta 1 --decoder-variance fixed --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s_spectral --beta 1 --decoder-variance fixed --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s_spectral --beta 1 --decoder-variance learned --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s_spectral --beta 1 --decoder-variance learned --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s_spectral --beta 1 --decoder-variance learned --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s_spectral --beta 32 --decoder-variance fixed --seed 0 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s_spectral --beta 32 --decoder-variance fixed --seed 1 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae
+train_vae.py --arch transformer --inputs raw_3s_spectral --beta 32 --decoder-variance fixed --seed 2 --train-class OOD-safe --out-root ml/nature/awareness/runs_train_class/ood_safe/vae

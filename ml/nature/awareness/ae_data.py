@@ -1,6 +1,7 @@
 """Training arrays for the Nature awareness autoencoders, built once on the laptop from the sample cache.
 
     python ml/nature/awareness/ae_data.py          # needs data/cache/nature/samples (nature notebook 01)
+    python ml/nature/awareness/ae_data.py --ablation-only   # only the input-ablation settings, from built arrays
 
 Writes ``data/processed_nature/ae/``:
 
@@ -46,9 +47,14 @@ CHANNEL_NAMES = [name.format(s = s) for s in nt.SIDES for name, _ in CHANNELS]
 CHANNEL_SOURCES = [source.format(s = s) for s in nt.SIDES for _, source in CHANNELS]
 SPECTRAL = ['dominant_hz_l', 'dominant_hz_r', 'spectral_entropy_l', 'spectral_entropy_r', 'stride_regularity_l',
             'stride_regularity_r', 'step_regularity']
-# input settings: window (samples) of the 16 raw channels, and per-window features fed as constant extra channels
-INPUTS = {'raw_1s': {'table': 'windows.parquet', 'window': WINDOW, 'features': []},
-          'raw_3s_spectral': {'table': 'windows_raw_3s_spectral.parquet', 'window': 3 * WINDOW, 'features': SPECTRAL}}
+# input settings: window (samples) of the 16 raw channels, and per-window features fed as constant extra channels.
+# The first two are built from the recordings; the input ablation adds the other two from the 3 s table (same window
+# ends), so every setting can be compared window by window: 3 s without the spectral features, and 1 s with them.
+BASE_INPUTS = {'raw_1s': {'table': 'windows.parquet', 'window': WINDOW, 'features': []},
+               'raw_3s_spectral': {'table': 'windows_raw_3s_spectral.parquet', 'window': 3 * WINDOW, 'features': SPECTRAL}}
+ABLATION_INPUTS = {'raw_3s': {'table': 'windows_raw_3s_spectral.parquet', 'window': 3 * WINDOW, 'features': []},
+                   'raw_1s_spectral': {'table': 'windows_raw_1s_spectral.parquet', 'window': WINDOW, 'features': SPECTRAL}}
+INPUTS = {**BASE_INPUTS, **ABLATION_INPUTS}
 
 
 def get_valid_ends(x: npt.NDArray[np.float32], window: int = WINDOW, stride: int = STRIDE) -> npt.NDArray[np.int64]:
@@ -123,9 +129,24 @@ def build_arrays(out: Path = OUT) -> pd.DataFrame:
             'inputs': INPUTS, 'split_seed': SPLIT_SEED,
             'split': {k: sorted(p for p, s in split.items() if s == k) for k in ('train', 'val', 'test')},
             'n_samples': int(offset), 'id_tasks': list(nt.ID_SAFE_TASKS),
-            'data_version': get_data_version(out / 'signals.npy', *(out / i['table'] for i in INPUTS.values()))}
+            'data_version': get_data_version(out / 'signals.npy', *(out / i['table'] for i in BASE_INPUTS.values()))}
     (out / 'meta.json').write_text(json.dumps(meta, indent = 2))
+    write_ablation_inputs(out)
     return windows
+
+
+def write_ablation_inputs(out: Path = OUT) -> pd.DataFrame:
+    """The input ablation's settings, derived from the 3 s table: its 1 s windows (the last 200 samples of each 3 s window)
+    with the same spectral features, written as their own table; and the 3 s windows without features (the same table).
+    Adds both to meta.json. The data version covers the base files only, since these are deterministic views of them."""
+    long = pd.read_parquet(out / BASE_INPUTS['raw_3s_spectral']['table'])
+    short = long.assign(start = long['start'] + (BASE_INPUTS['raw_3s_spectral']['window'] - WINDOW))
+    short.to_parquet(out / ABLATION_INPUTS['raw_1s_spectral']['table'], index = False)
+    meta_path = out / 'meta.json'
+    meta = json.loads(meta_path.read_text())
+    meta['inputs'] = {**meta['inputs'], **ABLATION_INPUTS}
+    meta_path.write_text(json.dumps(meta, indent = 2))
+    return short
 
 
 def build_long_table(windows: pd.DataFrame, long_ends: pd.DataFrame, window: int) -> pd.DataFrame:
@@ -152,6 +173,9 @@ def get_data_version(*paths: Path) -> str:
 
 
 if __name__ == '__main__':
+    if '--ablation-only' in sys.argv:                                 # derive the ablation settings from built arrays
+        print(f"1 s + spectral: {len(write_ablation_inputs()):,} windows -> {OUT}")
+        raise SystemExit
     table = build_arrays()
     long = pd.read_parquet(OUT / INPUTS['raw_3s_spectral']['table'])
     print(f'3 s + spectral: {len(long):,} windows ({len(long) / len(table):.0%} of the 1 s windows)')

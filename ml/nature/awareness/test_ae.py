@@ -44,6 +44,12 @@ def check() -> None:
     # whole-set moments give the same penalty as one batch holding every window, in any order
     zz = torch.rand(64, 32) * (torch.rand(64, 32) > 0.7)
     torch.testing.assert_close(ta.get_penalty_from_moments(zz.abs().mean(0), zz.pow(2).mean(0)), ta.get_sparsity_penalty(zz))
+    # training classes: '+' joins controller classes; only in-task windows of the split are kept
+    table = pd.DataFrame({'split': ['train'] * 5 + ['val'], 'in_task': [True, True, True, False, True, True],
+                          'controller_class': ['ID-safe', 'OOD-safe', 'OOD-dangerous', 'OOD-safe', 'ID-safe', 'OOD-safe']})
+    picked = {c: ta.get_set_rows(table, 'train', c).tolist() for c in ta.TRAIN_CLASSES}
+    assert picked == {'ID-safe': [0, 4], 'ID-safe+OOD-safe': [0, 1, 4], 'OOD-safe': [1]}, picked
+    assert ta.get_set_rows(table, 'train', None).tolist() == [0, 1, 2, 4]
     # run names record only what differs from the defaults
     names = [ta.get_run_name(ta.AeConfig(variant = v, seed = 1, inputs = i, sparsity_weight = w, latent = l))
              for v, i, w, l in (('vanilla', 'raw_1s', 0.0, '4x8'), ('sparse', 'raw_3s_spectral', ta.SPARSITY_WEIGHT, '4x8'),

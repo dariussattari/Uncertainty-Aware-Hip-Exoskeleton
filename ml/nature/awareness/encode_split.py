@@ -3,12 +3,16 @@
     python ml/nature/awareness/encode_split.py --split val                        # every run under runs/ae
     python ml/nature/awareness/encode_split.py --split val --stem vanilla         # one model stem, every seed
     python ml/nature/awareness/encode_split.py --check --stem vanilla             # re-encode exported test windows
+    python ml/nature/awareness/encode_split.py --split train --runs notebooks/nature/model_exploration/runs/vae \
+        --stem lstm_vae_raw_3s_b1_fixed                                           # a VAE run (any --arch): every train window
 
 Writes ``latents_<split>.npz`` beside each run's ``latents.npz`` in the same format (``rows``, ``rec``, ``end``, ``z``,
 ``recon_mse``, ``is_train`` all False), so the notebooks' ``_novelty_scores.py`` reads both the same way. The cluster
 export (``train_ae.export_latents``) holds the test participants and a sample of training windows only; the
 validation participants are needed to set the alarm threshold and choose LOF's dimensionality on held-out people
-without touching the test participants (notebook 05, section 8).
+without touching the test participants (notebook 05, section 8). VAE runs (``train_vae.py``, any architecture) are
+encoded with ``train_vae``'s own model and data path and also write ``logvar``, ``nll`` and ``kl``; ``--split train``
+gives every in-task training-participant window of every class, which the regime classifier is fitted on (notebook 13).
 
 ``--check`` re-encodes a sample of each run's exported test windows and compares them with the export: the cluster
 encoded under bf16 autocast, this script in fp32, so agreement is checked as a relative RMS difference, not equality.
@@ -29,7 +33,8 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parents[1] / 'common'))                 # ml/common: dataset-agnostic models
 sys.path.insert(0, str(HERE))
 from models.autoencoder import ConvAutoencoder  # noqa: E402
-from train_ae import resolve_device  # noqa: E402
+from train_ae import get_set_rows, load_data, resolve_device  # noqa: E402
+import train_vae as tv  # noqa: E402
 
 LOG = logging.getLogger('encode_split')
 BATCH = 2_048
@@ -98,6 +103,48 @@ def encode_rows(model: ConvAutoencoder, signals: npt.NDArray[np.float32], window
     return z.astype(np.float32), err.astype(np.float32)
 
 
+def load_vae(run: Path, data_dir: Path, device: torch.device) -> tuple[torch.nn.Module, 'tv.AeData', 'tv.VaeConfig']:
+    """A VAE run's model in eval mode with its arrays on the device, standardized exactly as in training (checked against
+    the checkpoint: ``load_data`` redraws the same statistics sample from the run's seed)."""
+    config = json.loads((run / 'config.json').read_text())
+    fields = {k: config[k] for k in tv.VaeConfig.__dataclass_fields__ if k in config}
+    cfg = tv.VaeConfig(**{**fields, 'pool': tuple(fields['pool']), 'compile_on_cuda': False})
+    data = load_data(data_dir, cfg, device, np.random.default_rng(cfg.seed))
+    if config.get('data_version') not in (None, data.data_version):
+        raise ValueError(f'{run.name} trained on data version {config.get("data_version")}, the arrays are {data.data_version}.')
+    state = torch.load(run / 'best.pt', map_location = 'cpu', weights_only = True)
+    for name in ('mean', 'std'):
+        np.testing.assert_allclose(getattr(data, name), state[name].numpy(), rtol = 1e-5,
+                                   err_msg = f'{run.name}: the standardization differs from the checkpoint\'s')
+    model = tv.get_model(cfg, data.n_inputs, data.window)
+    model.load_state_dict(state['model'])
+    return model.to(device).eval(), data, cfg
+
+
+def write_vae_split(run: Path, split: str, data_dir: Path, device: torch.device) -> int:
+    """Encode every in-task window of one participant split with a VAE run and write ``latents_<split>.npz`` in the
+    format of ``train_vae.export_latents``; returns the count."""
+    model, data, cfg = load_vae(run, data_dir, device)
+    rows = get_set_rows(data.windows, split, None)
+    enc = tv.encode_rows(model, data, rows, cfg)
+    np.savez(run / f'latents_{split}.npz', rows = rows, rec = data.windows['rec'].to_numpy()[rows],
+             end = data.windows['end'].to_numpy()[rows], is_train = np.zeros(len(rows), bool), split = split, **enc)
+    return len(rows)
+
+
+def check_vae_export(run: Path, data_dir: Path, device: torch.device, rng: np.random.Generator) -> dict[str, float]:
+    """Re-encode a sample of the run's exported validation windows; relative RMS difference against the export."""
+    model, data, cfg = load_vae(run, data_dir, device)
+    export = np.load(run / 'latents_val.npz')
+    pick = np.sort(rng.choice(len(export['rows']), min(CHECK_WINDOWS, len(export['rows'])), replace = False))
+    enc = tv.encode_rows(model, data, export['rows'][pick], cfg)
+    rms = lambda a: float(np.sqrt(np.mean(np.square(a, dtype = np.float64))))             # noqa: E731
+    result = {f'{k}_rel_rms': rms(enc[k] - export[k][pick]) / rms(export[k][pick]) for k in ('z', 'logvar', 'recon_mse')}
+    if max(result.values()) > CHECK_TOLERANCE:
+        raise AssertionError(f'{run.name}: re-encoded validation windows differ from the export by {result} (tolerance {CHECK_TOLERANCE})')
+    return result
+
+
 def write_split(run: Path, split: str, signals: npt.NDArray[np.float32], data_dir: Path, device: torch.device) -> int:
     """Encode every in-task window of one participant split and write ``latents_<split>.npz``; returns the count."""
     config = json.loads((run / 'config.json').read_text())
@@ -151,14 +198,19 @@ def main(argv: list[str] | None = None) -> None:
     rng = np.random.default_rng(0)
     for run in runs:
         t1 = time.time()
-        if a.check:
+        is_vae = json.loads((run / 'config.json').read_text()).get('model') == 'vae'
+        if a.check and is_vae:
+            result = check_vae_export(run, a.data_dir, device, rng)
+            LOG.info('%s: %d validation windows re-encoded, relative RMS difference %s (%.0f s)', run.name, CHECK_WINDOWS,
+                     {k: round(v, 4) for k, v in result.items()}, time.time() - t1)
+        elif a.check:
             result = check_export(run, signals, a.data_dir, device, rng)
             LOG.info('%s: %d test windows re-encoded, relative RMS difference z %.4f, MSE %.4f (%.0f s)', run.name, CHECK_WINDOWS,
                      result['z_rel_rms'], result['mse_rel_rms'], time.time() - t1)
         elif (run / f'latents_{a.split}.npz').exists() and not a.force:
             LOG.info('%s: latents_%s.npz exists, skipped (--force to rewrite)', run.name, a.split)
         else:
-            n = write_split(run, a.split, signals, a.data_dir, device)
+            n = write_vae_split(run, a.split, a.data_dir, device) if is_vae else write_split(run, a.split, signals, a.data_dir, device)
             LOG.info('%s: %d %s windows -> latents_%s.npz (%.0f s)', run.name, n, a.split, a.split, time.time() - t1)
     LOG.info('done in %.1f min', (time.time() - t0) / 60)
 
