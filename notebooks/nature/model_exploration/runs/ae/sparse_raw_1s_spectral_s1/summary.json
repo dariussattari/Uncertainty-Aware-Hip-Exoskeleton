@@ -1,0 +1,21 @@
+{
+  "git_sha": "248e43c-dirty",
+  "data_version": "a1af7bf8ab64f99d",
+  "device": "cuda",
+  "torch": "2.6.0+cu124",
+  "n_train": 111369,
+  "n_val": 35345,
+  "variant": "sparse",
+  "inputs": "raw_1s_spectral",
+  "seed": 1,
+  "sparsity_weight": 0.3,
+  "best_epoch": 23,
+  "epochs_run": 29,
+  "val_mse": 0.25820469856262207,
+  "val_penalty": 0.15070787072181702,
+  "val_objective": 0.30341705977916716,
+  "val_active_fraction": 0.8521086573600769,
+  "val_dead_units": 0,
+  "exported_windows": 157955,
+  "minutes": 2.02
+}

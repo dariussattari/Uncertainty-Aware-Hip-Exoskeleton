@@ -2,7 +2,8 @@
 
 A *view* is one way of placing windows in 2-D or 3-D: the latent units themselves (the highest-variance units, raw
 values), PCA, or UMAP of the standardized latent. A *lens* is one labelling of the same windows: task, task family,
-controller class, movement direction, or the Science Robotics mode the task shares.
+controller class, movement direction, or the Science Robotics mode the task shares, or a continuous score such as a
+novelty percentile (``SCORE_SCALE``).
 """
 import hashlib
 import json
@@ -10,6 +11,7 @@ from pathlib import Path
 import warnings
 
 import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -32,6 +34,8 @@ SCIROB_C = {'LG': '#2266cc', 'RA': '#a3470b', 'RD': '#ec9446', 'SA': '#0f7d55', 
 # tasks within one family panel (validated for colour-vision deficiency); panels never share a task, so hues may repeat
 PANEL_C = ('#2266cc', '#e0572b', '#0f9d6e', '#b0479a', '#d99a00', '#3fb0e0', '#6a4fc2', '#94a01c')
 SYMBOLS_3D = ('circle', 'square', 'diamond', 'cross', 'circle-open', 'square-open', 'diamond-open', 'x')
+# continuous lenses (novelty percentiles): one hue, light to dark; purple so it never reads as a regime colour
+SCORE_SCALE = [[0.0, '#ece6f6'], [0.5, '#8a6cc4'], [1.0, '#2d1a5e']]
 
 
 def get_task_styles(families: dict[str, tuple[str, ...]]) -> dict[str, dict[str, str]]:
@@ -194,7 +198,8 @@ def build_3d(settings: dict[str, dict], labels: pd.DataFrame, lenses: dict[str, 
     """One 3-D scene; the dropdown shows one (input setting, view, lens) at a time. Hover: task, participant, direction.
 
     ``settings`` maps an input-setting label to that model's views of the same windows (``labels``). For the task lens
-    ``palette`` maps each task to its family's colour and ``task_symbols`` to its marker.
+    ``palette`` maps each task to its family's colour and ``task_symbols`` to its marker. A lens whose palette is a colour
+    scale (a list, e.g. ``SCORE_SCALE``) is continuous: ``labels[column]`` holds a 0-100 score, drawn as one trace.
     """
     fig, entries = go.Figure(), []
     hover = (labels['task'].astype(str) + ' · ' + labels['subject'].astype(str) + ' · ' + labels['direction'].astype(str)).to_numpy()
@@ -202,17 +207,26 @@ def build_3d(settings: dict[str, dict], labels: pd.DataFrame, lenses: dict[str, 
         for view in VIEWS:
             pts = np.round(views[(view, 3)], 3)
             for lens, (column, palette) in lenses.items():
-                values = labels[column].astype(str).to_numpy()
                 first = len(fig.data)
-                rest = ~np.isin(values, list(palette))
-                groups = [('other', rest, BACKGROUND)] if rest.any() else []
-                groups += [(lab, values == lab, color) for lab, color in palette.items()]
-                for lab, m, color in groups:
-                    symbol = task_symbols.get(lab, 'circle') if column == 'task' else 'circle'
-                    fig.add_trace(go.Scatter3d(x = pts[m, 0], y = pts[m, 1], z = pts[m, 2], mode = 'markers', name = lab,
-                                               visible = not entries, text = hover[m], hovertemplate = '%{text}<extra></extra>',
-                                               marker = dict(size = 2.4, color = color, symbol = symbol,
-                                                             opacity = .35 if lab == 'other' else .75)))
+                if isinstance(palette, list):                                    # continuous lens: one trace, colour bar
+                    score = labels[column].to_numpy(dtype = float)
+                    fig.add_trace(go.Scatter3d(x = pts[:, 0], y = pts[:, 1], z = pts[:, 2], mode = 'markers', name = lens,
+                                               visible = not entries, text = hover, customdata = score, showlegend = False,
+                                               hovertemplate = '%{text} · %{customdata:.0f}<extra></extra>',
+                                               marker = dict(size = 2.4, color = score, colorscale = palette, cmin = 0, cmax = 100,
+                                                             opacity = .8, colorbar = dict(title = dict(text = lens, side = 'right'),
+                                                                                           thickness = 14, len = .6))))
+                else:
+                    values = labels[column].astype(str).to_numpy()
+                    rest = ~np.isin(values, list(palette))
+                    groups = [('other', rest, BACKGROUND)] if rest.any() else []
+                    groups += [(lab, values == lab, color) for lab, color in palette.items()]
+                    for lab, m, color in groups:
+                        symbol = task_symbols.get(lab, 'circle') if column == 'task' else 'circle'
+                        fig.add_trace(go.Scatter3d(x = pts[m, 0], y = pts[m, 1], z = pts[m, 2], mode = 'markers', name = lab,
+                                                   visible = not entries, text = hover[m], hovertemplate = '%{text}<extra></extra>',
+                                                   marker = dict(size = 2.4, color = color, symbol = symbol,
+                                                                 opacity = .35 if lab == 'other' else .75)))
                 prefix = f'{setting} · ' if len(settings) > 1 else ''
                 entries.append((f'{prefix}{view} · {lens}', range(first, len(fig.data))))
     buttons = []
@@ -224,4 +238,40 @@ def build_3d(settings: dict[str, dict], labels: pd.DataFrame, lenses: dict[str, 
                       margin = dict(l = 0, r = 0, t = 90, b = 0), legend = dict(itemsizing = 'constant', font = dict(size = 10)),
                       scene = dict(xaxis_title = '1', yaxis_title = '2', zaxis_title = '3'),
                       updatemenus = [dict(buttons = buttons, direction = 'down', x = .02, y = 1.08, xanchor = 'left', yanchor = 'top')])
+    return fig
+
+
+def plot_score_panels(points: npt.NDArray[np.float32], regime: npt.NDArray, scores: dict[str, npt.NDArray[np.float64]],
+                      marks: dict[str, float], title: str, path: Path | None = None, seed: int = 0) -> plt.Figure:
+    """One 2-D layout drawn 1 + len(scores) times: coloured by regime (``CLASS_C``), then by each 0-100 score.
+
+    ``marks`` puts a tick on each score's colour bar (e.g. where 1% of familiar windows score higher). Points are drawn
+    in one fixed random order in every panel, so neither high nor low scores are favoured by being drawn last.
+    """
+    order = np.random.default_rng(seed).permutation(len(points))
+    pts, reg = points[order], np.asarray(regime)[order]
+    cmap = LinearSegmentedColormap.from_list('score', [c for _, c in SCORE_SCALE])
+    fig, axes = plt.subplots(1, 1 + len(scores), figsize = (4.2 * (1 + len(scores)), 4.6))
+    for name, color in CLASS_C.items():
+        m = reg == name
+        axes[0].scatter(pts[m, 0], pts[m, 1], s = 3, color = color, alpha = .7, linewidths = 0, rasterized = True, label = name)
+    axes[0].legend(loc = 'upper center', bbox_to_anchor = (.5, -0.02), ncol = 3, fontsize = 8, frameon = False, markerscale = 3,
+                   handletextpad = .1, columnspacing = .8)
+    axes[0].set_title('regime', fontsize = 10)
+    for ax, (name, values) in zip(axes[1:], scores.items()):
+        im = ax.scatter(pts[:, 0], pts[:, 1], s = 3, c = np.asarray(values)[order], cmap = cmap, vmin = 0, vmax = 100,
+                        linewidths = 0, rasterized = True)
+        bar = fig.colorbar(im, ax = ax, orientation = 'horizontal', fraction = .05, pad = .04, ticks = [0, 25, 50, 75, 100])
+        bar.ax.tick_params(labelsize = 7)
+        if name in marks:
+            bar.ax.axvline(marks[name], color = '#a32d2d', linewidth = 2)
+            bar.set_label('percentile · red: 1% of familiar windows score higher', fontsize = 7)
+        ax.set_title(name, fontsize = 10)
+    for ax in axes:
+        ax.set_xticks([]); ax.set_yticks([])
+        ax.spines[['top', 'right', 'bottom', 'left']].set_visible(False)
+    fig.suptitle(title, fontsize = 11)
+    fig.tight_layout()
+    if path is not None:
+        fig.savefig(path, dpi = 180, bbox_inches = 'tight')
     return fig

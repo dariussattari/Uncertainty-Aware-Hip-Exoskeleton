@@ -1,0 +1,31 @@
+{
+  "variant": "vanilla",
+  "sparsity_weight": 0.0,
+  "linear_latent": false,
+  "objective": "mse",
+  "lr": 0.003,
+  "batch_size": 1024,
+  "max_epochs": 200,
+  "patience": 5,
+  "seed": 2,
+  "train_class": "OOD-safe",
+  "inputs": "raw_3s",
+  "latent": "4x8",
+  "latent_filters": 4,
+  "pool": [
+    5,
+    15
+  ],
+  "bf16_on_cuda": true,
+  "max_train_windows": null,
+  "stats_samples": 4000000,
+  "bn_batches": 50,
+  "sparsity_warmup_epochs": 5,
+  "export_train_windows": 20000,
+  "git_sha": "248e43c-dirty",
+  "data_version": "a1af7bf8ab64f99d",
+  "device": "cuda",
+  "torch": "2.6.0+cu124",
+  "n_train": 391781,
+  "n_val": 116086
+}

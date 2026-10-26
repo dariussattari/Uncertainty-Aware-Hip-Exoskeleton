@@ -1,0 +1,30 @@
+{
+  "model": "vae",
+  "arch": "tcn",
+  "beta": 1.0,
+  "decoder_variance": "fixed",
+  "seed": 0,
+  "inputs": "raw_3s_spectral",
+  "pool": [
+    5,
+    15
+  ],
+  "latent": "4x8",
+  "train_class": "ID-safe",
+  "lr": 0.003,
+  "batch_size": 1024,
+  "max_epochs": 200,
+  "patience": 5,
+  "bf16_on_cuda": true,
+  "compile_on_cuda": true,
+  "max_train_windows": null,
+  "stats_samples": 4000000,
+  "bn_batches": 50,
+  "export_train_windows": 20000,
+  "git_sha": "248e43c-dirty",
+  "data_version": "a1af7bf8ab64f99d",
+  "device": "cuda",
+  "torch": "2.6.0+cu124",
+  "n_train": 111369,
+  "n_val": 35345
+}

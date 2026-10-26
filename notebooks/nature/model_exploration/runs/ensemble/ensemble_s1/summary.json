@@ -1,0 +1,24 @@
+{
+  "git_sha": "248e43c-dirty",
+  "data_version": "a1af7bf8ab64f99d",
+  "gait_phase_version": "88eac7fd0713edca",
+  "device": "cuda",
+  "torch": "2.6.0+cu124",
+  "n_train": 116126,
+  "n_val": 36449,
+  "n_train_unlabelled": 3556,
+  "protocol": "val",
+  "seed": 1,
+  "epochs_run": 18,
+  "best_epoch": 7,
+  "stage1": null,
+  "val_mse": 0.06528773158788681,
+  "threshold": 0.017419029027223587,
+  "threshold_percentile": 99.5,
+  "psi_train_median": 0.0009740713285282254,
+  "exported_windows": {
+    "scores.npz": 160954,
+    "scores_val.npz": 177582
+  },
+  "minutes": 1.4
+}

@@ -1,0 +1,37 @@
+[
+  {
+    "epoch": 0,
+    "train_mse": 0.06040910258889198,
+    "seconds": 3.74
+  },
+  {
+    "epoch": 1,
+    "train_mse": 0.03639471158385277,
+    "seconds": 3.74
+  },
+  {
+    "epoch": 2,
+    "train_mse": 0.0340680368244648,
+    "seconds": 3.74
+  },
+  {
+    "epoch": 3,
+    "train_mse": 0.0328206792473793,
+    "seconds": 3.74
+  },
+  {
+    "epoch": 4,
+    "train_mse": 0.03182825818657875,
+    "seconds": 3.74
+  },
+  {
+    "epoch": 5,
+    "train_mse": 0.03126735985279083,
+    "seconds": 3.74
+  },
+  {
+    "epoch": 6,
+    "train_mse": 0.030700748786330223,
+    "seconds": 3.74
+  }
+]

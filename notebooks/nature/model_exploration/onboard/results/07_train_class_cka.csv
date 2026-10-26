@@ -1,0 +1,173 @@
+train_class,type,input,model,CKA with the ID-trained twin
+ID-safe+OOD-safe,Gaussian-NLL AE,1 s + spectral,gaussian · 1 s + spectral,0.4607501553256881
+ID-safe+OOD-safe,Gaussian-NLL AE,3 s raw,gaussian · 3 s raw,0.61385347441721
+ID-safe+OOD-safe,Gaussian-NLL AE,3 s + spectral,gaussian · 3 s + spectral,0.7633069885312254
+ID-safe+OOD-safe,Gaussian-NLL AE,1 s raw,gaussian · 1 s raw,0.7493815537828306
+ID-safe+OOD-safe,sparse AE,1 s + spectral,sparse · 1 s + spectral · λ 0.3,0.11067525059181865
+ID-safe+OOD-safe,sparse AE,3 s raw,sparse · 3 s raw · λ 0.3,0.3084746074662021
+ID-safe+OOD-safe,sparse AE,3 s + spectral,sparse · 3 s + spectral · λ 0.1 · 8x4,0.049783502255998535
+ID-safe+OOD-safe,sparse AE,3 s + spectral,sparse · 3 s + spectral · λ 0.1,0.025273236896566492
+ID-safe+OOD-safe,sparse AE,3 s + spectral,sparse · 3 s + spectral · λ 0.3,0.009177104482344026
+ID-safe+OOD-safe,sparse AE,1 s raw,sparse · 1 s raw · λ 0.3,0.004367059853829844
+ID-safe+OOD-safe,plain AE,1 s + spectral,vanilla · 1 s + spectral,0.7820567790841425
+ID-safe+OOD-safe,plain AE,3 s raw,vanilla · 3 s raw,0.7173007454422105
+ID-safe+OOD-safe,plain AE,3 s + spectral,vanilla · 3 s + spectral · 8x4,0.5461283987205379
+ID-safe+OOD-safe,plain AE,3 s + spectral,vanilla · 3 s + spectral,0.7638962793848647
+ID-safe+OOD-safe,plain AE,1 s raw,vanilla · 1 s raw,0.7819972343370163
+ID-safe+OOD-safe,LSTM-VAE,1 s raw,LSTM-VAE · β 128 · fixed variance,0.26838354516473023
+ID-safe+OOD-safe,LSTM-VAE,1 s raw,LSTM-VAE · β 1 · fixed variance,0.5378578808623061
+ID-safe+OOD-safe,LSTM-VAE,1 s raw,LSTM-VAE · β 1 · learned variance,0.9051539178039789
+ID-safe+OOD-safe,LSTM-VAE,1 s raw,LSTM-VAE · β 32 · fixed variance,0.2222434977488568
+ID-safe+OOD-safe,LSTM-VAE,1 s + spectral,LSTM-VAE · β 128 · fixed variance · 1 s + spectral,0.6124081655875281
+ID-safe+OOD-safe,LSTM-VAE,1 s + spectral,LSTM-VAE · β 1 · fixed variance · 1 s + spectral,0.34762581954158156
+ID-safe+OOD-safe,LSTM-VAE,1 s + spectral,LSTM-VAE · β 1 · learned variance · 1 s + spectral,0.6617034429384328
+ID-safe+OOD-safe,LSTM-VAE,1 s + spectral,LSTM-VAE · β 32 · fixed variance · 1 s + spectral,0.270527421274582
+ID-safe+OOD-safe,LSTM-VAE,3 s raw,LSTM-VAE · β 128 · fixed variance · 3 s raw,0.44847888899646904
+ID-safe+OOD-safe,LSTM-VAE,3 s raw,LSTM-VAE · β 1 · fixed variance · 3 s raw,0.5181812483653575
+ID-safe+OOD-safe,LSTM-VAE,3 s raw,LSTM-VAE · β 1 · learned variance · 3 s raw,0.7403835027280155
+ID-safe+OOD-safe,LSTM-VAE,3 s raw,LSTM-VAE · β 32 · fixed variance · 3 s raw,0.32500757173854167
+ID-safe+OOD-safe,LSTM-VAE,3 s + spectral,LSTM-VAE · β 128 · fixed variance · 3 s + spectral,0.20133515408464903
+ID-safe+OOD-safe,LSTM-VAE,3 s + spectral,LSTM-VAE · β 1 · fixed variance · 3 s + spectral,0.7731333067229987
+ID-safe+OOD-safe,LSTM-VAE,3 s + spectral,LSTM-VAE · β 1 · learned variance · 3 s + spectral,0.8635848722194658
+ID-safe+OOD-safe,LSTM-VAE,3 s + spectral,LSTM-VAE · β 32 · fixed variance · 3 s + spectral,0.2880784915059887
+ID-safe+OOD-safe,TCN-VAE,1 s raw,TCN-VAE · β 128 · fixed variance,0.5466209318705925
+ID-safe+OOD-safe,TCN-VAE,1 s raw,TCN-VAE · β 1 · fixed variance,0.5787984233623277
+ID-safe+OOD-safe,TCN-VAE,1 s raw,TCN-VAE · β 1 · learned variance,0.7774402292702183
+ID-safe+OOD-safe,TCN-VAE,1 s raw,TCN-VAE · β 32 · fixed variance,0.4614814935353238
+ID-safe+OOD-safe,TCN-VAE,1 s + spectral,TCN-VAE · β 128 · fixed variance · 1 s + spectral,0.4945580339697921
+ID-safe+OOD-safe,TCN-VAE,1 s + spectral,TCN-VAE · β 1 · fixed variance · 1 s + spectral,0.6174121565752786
+ID-safe+OOD-safe,TCN-VAE,1 s + spectral,TCN-VAE · β 1 · learned variance · 1 s + spectral,0.7906235226363735
+ID-safe+OOD-safe,TCN-VAE,1 s + spectral,TCN-VAE · β 32 · fixed variance · 1 s + spectral,0.5368043945644483
+ID-safe+OOD-safe,TCN-VAE,3 s raw,TCN-VAE · β 128 · fixed variance · 3 s raw,0.3272791007766964
+ID-safe+OOD-safe,TCN-VAE,3 s raw,TCN-VAE · β 1 · fixed variance · 3 s raw,0.6004028326322911
+ID-safe+OOD-safe,TCN-VAE,3 s raw,TCN-VAE · β 1 · learned variance · 3 s raw,0.8069778781430391
+ID-safe+OOD-safe,TCN-VAE,3 s raw,TCN-VAE · β 32 · fixed variance · 3 s raw,0.3806365016070698
+ID-safe+OOD-safe,TCN-VAE,3 s + spectral,TCN-VAE · β 128 · fixed variance · 3 s + spectral,0.40793768329006885
+ID-safe+OOD-safe,TCN-VAE,3 s + spectral,TCN-VAE · β 1 · fixed variance · 3 s + spectral,0.6081082607560528
+ID-safe+OOD-safe,TCN-VAE,3 s + spectral,TCN-VAE · β 1 · learned variance · 3 s + spectral,0.8642907583218877
+ID-safe+OOD-safe,TCN-VAE,3 s + spectral,TCN-VAE · β 32 · fixed variance · 3 s + spectral,0.4766899279164294
+ID-safe+OOD-safe,conv VAE,1 s raw,VAE · β 128 · fixed variance,0.5834286799673462
+ID-safe+OOD-safe,conv VAE,1 s raw,VAE · β 128 · learned variance,0.5653884918593333
+ID-safe+OOD-safe,conv VAE,1 s raw,VAE · β 1 · fixed variance,0.6420067132923885
+ID-safe+OOD-safe,conv VAE,1 s raw,VAE · β 1 · learned variance,0.956958820966538
+ID-safe+OOD-safe,conv VAE,1 s raw,VAE · β 32 · fixed variance,0.49390580610573503
+ID-safe+OOD-safe,conv VAE,1 s raw,VAE · β 32 · learned variance,0.530895343320781
+ID-safe+OOD-safe,conv VAE,1 s raw,VAE · β 64 · fixed variance,0.44380534422731627
+ID-safe+OOD-safe,conv VAE,1 s raw,VAE · β 64 · learned variance,0.4452752827947421
+ID-safe+OOD-safe,conv VAE,1 s raw,VAE · β 8 · fixed variance,0.6798931770971343
+ID-safe+OOD-safe,conv VAE,1 s raw,VAE · β 8 · learned variance,0.7378039211093808
+ID-safe+OOD-safe,conv VAE,1 s + spectral,VAE · β 128 · fixed variance · 1 s + spectral,0.6215822232163921
+ID-safe+OOD-safe,conv VAE,1 s + spectral,VAE · β 1 · fixed variance · 1 s + spectral,0.721445091816664
+ID-safe+OOD-safe,conv VAE,1 s + spectral,VAE · β 1 · learned variance · 1 s + spectral,0.6097683166158027
+ID-safe+OOD-safe,conv VAE,1 s + spectral,VAE · β 32 · fixed variance · 1 s + spectral,0.7105364137105992
+ID-safe+OOD-safe,conv VAE,3 s raw,VAE · β 128 · fixed variance · 3 s raw,0.6193471305750502
+ID-safe+OOD-safe,conv VAE,3 s raw,VAE · β 1 · fixed variance · 3 s raw,0.5844796579089574
+ID-safe+OOD-safe,conv VAE,3 s raw,VAE · β 1 · learned variance · 3 s raw,0.8586378304266814
+ID-safe+OOD-safe,conv VAE,3 s raw,VAE · β 32 · fixed variance · 3 s raw,0.4734590070024662
+ID-safe+OOD-safe,conv VAE,3 s + spectral,VAE · β 128 · fixed variance · 3 s + spectral,0.6788152249610622
+ID-safe+OOD-safe,conv VAE,3 s + spectral,VAE · β 1 · fixed variance · 3 s + spectral,0.7353352614494105
+ID-safe+OOD-safe,conv VAE,3 s + spectral,VAE · β 1 · learned variance · 3 s + spectral,0.8448220620472005
+ID-safe+OOD-safe,conv VAE,3 s + spectral,VAE · β 32 · fixed variance · 3 s + spectral,0.6535175733453674
+ID-safe+OOD-safe,conv VAE,3 s + spectral,VAE · β 64 · fixed variance · 3 s + spectral,0.56922692752091
+ID-safe+OOD-safe,Transformer VAE,1 s raw,Transformer VAE · β 128 · fixed variance,0.1224487601347346
+ID-safe+OOD-safe,Transformer VAE,1 s raw,Transformer VAE · β 1 · fixed variance,0.745141311673284
+ID-safe+OOD-safe,Transformer VAE,1 s raw,Transformer VAE · β 1 · learned variance,0.9470060916521527
+ID-safe+OOD-safe,Transformer VAE,1 s raw,Transformer VAE · β 32 · fixed variance,0.4916280908797547
+ID-safe+OOD-safe,Transformer VAE,1 s + spectral,Transformer VAE · β 128 · fixed variance · 1 s + spectral,0.4338837297726672
+ID-safe+OOD-safe,Transformer VAE,1 s + spectral,Transformer VAE · β 1 · fixed variance · 1 s + spectral,0.6646622574631613
+ID-safe+OOD-safe,Transformer VAE,1 s + spectral,Transformer VAE · β 1 · learned variance · 1 s + spectral,0.9073438396533366
+ID-safe+OOD-safe,Transformer VAE,1 s + spectral,Transformer VAE · β 32 · fixed variance · 1 s + spectral,0.34791250973044574
+ID-safe+OOD-safe,Transformer VAE,3 s raw,Transformer VAE · β 128 · fixed variance · 3 s raw,0.42856602738687005
+ID-safe+OOD-safe,Transformer VAE,3 s raw,Transformer VAE · β 1 · fixed variance · 3 s raw,0.6856967027110493
+ID-safe+OOD-safe,Transformer VAE,3 s raw,Transformer VAE · β 1 · learned variance · 3 s raw,0.8913069206277273
+ID-safe+OOD-safe,Transformer VAE,3 s raw,Transformer VAE · β 32 · fixed variance · 3 s raw,0.5241013986967099
+ID-safe+OOD-safe,Transformer VAE,3 s + spectral,Transformer VAE · β 128 · fixed variance · 3 s + spectral,0.4988706968953741
+ID-safe+OOD-safe,Transformer VAE,3 s + spectral,Transformer VAE · β 1 · fixed variance · 3 s + spectral,0.6974310265607854
+ID-safe+OOD-safe,Transformer VAE,3 s + spectral,Transformer VAE · β 1 · learned variance · 3 s + spectral,0.9505717943500629
+ID-safe+OOD-safe,Transformer VAE,3 s + spectral,Transformer VAE · β 32 · fixed variance · 3 s + spectral,0.29962136977336806
+OOD-safe,Gaussian-NLL AE,1 s + spectral,gaussian · 1 s + spectral,0.7586033311730318
+OOD-safe,Gaussian-NLL AE,3 s raw,gaussian · 3 s raw,0.6053054090381151
+OOD-safe,Gaussian-NLL AE,3 s + spectral,gaussian · 3 s + spectral,0.8140124874228514
+OOD-safe,Gaussian-NLL AE,1 s raw,gaussian · 1 s raw,0.7594973048299228
+OOD-safe,sparse AE,1 s + spectral,sparse · 1 s + spectral · λ 0.3,0.13302649597951724
+OOD-safe,sparse AE,3 s raw,sparse · 3 s raw · λ 0.3,0.3292618439882101
+OOD-safe,sparse AE,3 s + spectral,sparse · 3 s + spectral · λ 0.1 · 8x4,0.01594176791018137
+OOD-safe,sparse AE,3 s + spectral,sparse · 3 s + spectral · λ 0.1,0.0031771153121144596
+OOD-safe,sparse AE,3 s + spectral,sparse · 3 s + spectral · λ 0.3,0.009117377810946695
+OOD-safe,sparse AE,1 s raw,sparse · 1 s raw · λ 0.3,0.001619582509861816
+OOD-safe,plain AE,1 s + spectral,vanilla · 1 s + spectral,0.773840175740359
+OOD-safe,plain AE,3 s raw,vanilla · 3 s raw,0.5486553217898109
+OOD-safe,plain AE,3 s + spectral,vanilla · 3 s + spectral · 8x4,0.5442462754732409
+OOD-safe,plain AE,3 s + spectral,vanilla · 3 s + spectral,0.7715272700793653
+OOD-safe,plain AE,1 s raw,vanilla · 1 s raw,0.795390438245053
+OOD-safe,LSTM-VAE,1 s raw,LSTM-VAE · β 128 · fixed variance,0.2817343763783644
+OOD-safe,LSTM-VAE,1 s raw,LSTM-VAE · β 1 · fixed variance,0.4925324093536029
+OOD-safe,LSTM-VAE,1 s raw,LSTM-VAE · β 1 · learned variance,0.8819325388795733
+OOD-safe,LSTM-VAE,1 s raw,LSTM-VAE · β 32 · fixed variance,0.23853177354800925
+OOD-safe,LSTM-VAE,1 s + spectral,LSTM-VAE · β 128 · fixed variance · 1 s + spectral,0.6371431184025795
+OOD-safe,LSTM-VAE,1 s + spectral,LSTM-VAE · β 1 · fixed variance · 1 s + spectral,0.3871449703751586
+OOD-safe,LSTM-VAE,1 s + spectral,LSTM-VAE · β 1 · learned variance · 1 s + spectral,0.47695951558552957
+OOD-safe,LSTM-VAE,1 s + spectral,LSTM-VAE · β 32 · fixed variance · 1 s + spectral,0.2987146595113435
+OOD-safe,LSTM-VAE,3 s raw,LSTM-VAE · β 128 · fixed variance · 3 s raw,0.4537680306735583
+OOD-safe,LSTM-VAE,3 s raw,LSTM-VAE · β 1 · fixed variance · 3 s raw,0.5548654789880879
+OOD-safe,LSTM-VAE,3 s raw,LSTM-VAE · β 1 · learned variance · 3 s raw,0.7259742684366874
+OOD-safe,LSTM-VAE,3 s raw,LSTM-VAE · β 32 · fixed variance · 3 s raw,0.27723961414450415
+OOD-safe,LSTM-VAE,3 s + spectral,LSTM-VAE · β 128 · fixed variance · 3 s + spectral,0.2140696436140141
+OOD-safe,LSTM-VAE,3 s + spectral,LSTM-VAE · β 1 · fixed variance · 3 s + spectral,0.7550779737791834
+OOD-safe,LSTM-VAE,3 s + spectral,LSTM-VAE · β 1 · learned variance · 3 s + spectral,0.8713038464616666
+OOD-safe,LSTM-VAE,3 s + spectral,LSTM-VAE · β 32 · fixed variance · 3 s + spectral,0.3315127061069115
+OOD-safe,TCN-VAE,1 s raw,TCN-VAE · β 128 · fixed variance,0.044601048995710976
+OOD-safe,TCN-VAE,1 s raw,TCN-VAE · β 1 · fixed variance,0.5337461082237729
+OOD-safe,TCN-VAE,1 s raw,TCN-VAE · β 1 · learned variance,0.7921554190370025
+OOD-safe,TCN-VAE,1 s raw,TCN-VAE · β 32 · fixed variance,0.402843238977198
+OOD-safe,TCN-VAE,1 s + spectral,TCN-VAE · β 128 · fixed variance · 1 s + spectral,0.6541427226218085
+OOD-safe,TCN-VAE,1 s + spectral,TCN-VAE · β 1 · fixed variance · 1 s + spectral,0.592275015603317
+OOD-safe,TCN-VAE,1 s + spectral,TCN-VAE · β 1 · learned variance · 1 s + spectral,0.7713959703041746
+OOD-safe,TCN-VAE,1 s + spectral,TCN-VAE · β 32 · fixed variance · 1 s + spectral,0.4739983095775817
+OOD-safe,TCN-VAE,3 s raw,TCN-VAE · β 128 · fixed variance · 3 s raw,0.3294438607162648
+OOD-safe,TCN-VAE,3 s raw,TCN-VAE · β 1 · fixed variance · 3 s raw,0.7002020024240422
+OOD-safe,TCN-VAE,3 s raw,TCN-VAE · β 1 · learned variance · 3 s raw,0.8106213301162699
+OOD-safe,TCN-VAE,3 s raw,TCN-VAE · β 32 · fixed variance · 3 s raw,0.39986553714664513
+OOD-safe,TCN-VAE,3 s + spectral,TCN-VAE · β 128 · fixed variance · 3 s + spectral,0.38381310576063565
+OOD-safe,TCN-VAE,3 s + spectral,TCN-VAE · β 1 · fixed variance · 3 s + spectral,0.5934532623658739
+OOD-safe,TCN-VAE,3 s + spectral,TCN-VAE · β 1 · learned variance · 3 s + spectral,0.7980735141853261
+OOD-safe,TCN-VAE,3 s + spectral,TCN-VAE · β 32 · fixed variance · 3 s + spectral,0.4317322926298403
+OOD-safe,conv VAE,1 s raw,VAE · β 128 · fixed variance,0.4330194130293896
+OOD-safe,conv VAE,1 s raw,VAE · β 128 · learned variance,0.6493975047737786
+OOD-safe,conv VAE,1 s raw,VAE · β 1 · fixed variance,0.5724780987429761
+OOD-safe,conv VAE,1 s raw,VAE · β 1 · learned variance,0.9114254782813559
+OOD-safe,conv VAE,1 s raw,VAE · β 32 · fixed variance,0.5476061008730774
+OOD-safe,conv VAE,1 s raw,VAE · β 32 · learned variance,0.5270277464650969
+OOD-safe,conv VAE,1 s raw,VAE · β 64 · fixed variance,0.5069758770246119
+OOD-safe,conv VAE,1 s raw,VAE · β 64 · learned variance,0.4994651485720773
+OOD-safe,conv VAE,1 s raw,VAE · β 8 · fixed variance,0.6412707077699393
+OOD-safe,conv VAE,1 s raw,VAE · β 8 · learned variance,0.658187312909614
+OOD-safe,conv VAE,1 s + spectral,VAE · β 128 · fixed variance · 1 s + spectral,0.6313295146277349
+OOD-safe,conv VAE,1 s + spectral,VAE · β 1 · fixed variance · 1 s + spectral,0.6378180132399281
+OOD-safe,conv VAE,1 s + spectral,VAE · β 1 · learned variance · 1 s + spectral,0.6638319555472829
+OOD-safe,conv VAE,1 s + spectral,VAE · β 32 · fixed variance · 1 s + spectral,0.632247413405765
+OOD-safe,conv VAE,3 s raw,VAE · β 128 · fixed variance · 3 s raw,0.6541127055980996
+OOD-safe,conv VAE,3 s raw,VAE · β 1 · fixed variance · 3 s raw,0.4931662938572174
+OOD-safe,conv VAE,3 s raw,VAE · β 1 · learned variance · 3 s raw,0.7842665799079652
+OOD-safe,conv VAE,3 s raw,VAE · β 32 · fixed variance · 3 s raw,0.45802666387054725
+OOD-safe,conv VAE,3 s + spectral,VAE · β 128 · fixed variance · 3 s + spectral,0.6193264322770372
+OOD-safe,conv VAE,3 s + spectral,VAE · β 1 · fixed variance · 3 s + spectral,0.6837416767994656
+OOD-safe,conv VAE,3 s + spectral,VAE · β 1 · learned variance · 3 s + spectral,0.6193126869267637
+OOD-safe,conv VAE,3 s + spectral,VAE · β 32 · fixed variance · 3 s + spectral,0.6743829403863508
+OOD-safe,conv VAE,3 s + spectral,VAE · β 64 · fixed variance · 3 s + spectral,0.5745877088087397
+OOD-safe,Transformer VAE,1 s raw,Transformer VAE · β 128 · fixed variance,0.20168581897270382
+OOD-safe,Transformer VAE,1 s raw,Transformer VAE · β 1 · fixed variance,0.7110266161417893
+OOD-safe,Transformer VAE,1 s raw,Transformer VAE · β 1 · learned variance,0.9308605549965617
+OOD-safe,Transformer VAE,1 s raw,Transformer VAE · β 32 · fixed variance,0.5856024436137772
+OOD-safe,Transformer VAE,1 s + spectral,Transformer VAE · β 128 · fixed variance · 1 s + spectral,0.41531033628112857
+OOD-safe,Transformer VAE,1 s + spectral,Transformer VAE · β 1 · fixed variance · 1 s + spectral,0.6499372775217839
+OOD-safe,Transformer VAE,1 s + spectral,Transformer VAE · β 1 · learned variance · 1 s + spectral,0.8431590395152406
+OOD-safe,Transformer VAE,1 s + spectral,Transformer VAE · β 32 · fixed variance · 1 s + spectral,0.31850476161461794
+OOD-safe,Transformer VAE,3 s raw,Transformer VAE · β 128 · fixed variance · 3 s raw,0.4472146189047276
+OOD-safe,Transformer VAE,3 s raw,Transformer VAE · β 1 · fixed variance · 3 s raw,0.6497563620671999
+OOD-safe,Transformer VAE,3 s raw,Transformer VAE · β 1 · learned variance · 3 s raw,0.8911363050600076
+OOD-safe,Transformer VAE,3 s raw,Transformer VAE · β 32 · fixed variance · 3 s raw,0.5386478547131127
+OOD-safe,Transformer VAE,3 s + spectral,Transformer VAE · β 128 · fixed variance · 3 s + spectral,0.404499536918926
+OOD-safe,Transformer VAE,3 s + spectral,Transformer VAE · β 1 · fixed variance · 3 s + spectral,0.7122378313911982
+OOD-safe,Transformer VAE,3 s + spectral,Transformer VAE · β 1 · learned variance · 3 s + spectral,0.894467339663642
+OOD-safe,Transformer VAE,3 s + spectral,Transformer VAE · β 32 · fixed variance · 3 s + spectral,0.3055364744409695

@@ -1,0 +1,25 @@
+{
+  "git_sha": "248e43c-dirty",
+  "data_version": "a1af7bf8ab64f99d",
+  "device": "cuda",
+  "torch": "2.6.0+cu124",
+  "n_train": 391781,
+  "n_val": 116086,
+  "variant": "vanilla",
+  "inputs": "raw_3s",
+  "train_class": "OOD-safe",
+  "seed": 1,
+  "sparsity_weight": 0.0,
+  "best_epoch": 28,
+  "epochs_run": 34,
+  "val_mse": 0.3227477967739105,
+  "val_penalty": 0.9283161163330078,
+  "val_objective": 0.3227477967739105,
+  "val_active_fraction": 0.9689272046089172,
+  "val_dead_units": 0,
+  "exported_windows": {
+    "latents.npz": 157955,
+    "latents_val.npz": 173590
+  },
+  "minutes": 10.34
+}
