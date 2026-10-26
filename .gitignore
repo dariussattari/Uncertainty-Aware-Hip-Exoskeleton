@@ -228,6 +228,8 @@ data/nature/
 
 # Windowed arrays produced by 02_build_windows.ipynb
 data/processed/
+# Sci-Rob derived arrays (~10 GB); rebuilt by the pipeline, never pushed
+data/processed_all/
 
 # Local arm64 virtualenv (torch + MPS)
 .venv/
@@ -252,3 +254,15 @@ ml/nature/awareness/slurm/logs/
 ml/nature/awareness/GIT_SHA
 notebooks/nature/model_exploration/runs/**/*.npz
 notebooks/nature/model_exploration/runs/**/*.pt
+
+# Nature moment estimator: cluster logs, code stamp; pulled runs keep only their JSON summaries and logs in git
+ml/nature/estimator/slurm/logs/
+ml/nature/estimator/GIT_SHA
+ml/nature/estimator/runs/**/*.npz
+ml/nature/estimator/runs/**/*.pt
+
+# Training-class ablation runs: keep JSON summaries only, like runs/
+notebooks/nature/model_exploration/runs_train_class/**/*.npz
+notebooks/nature/model_exploration/runs_train_class/**/*.pt
+# Reference papers (copyrighted PDFs; public repo)
+docs/papers/
