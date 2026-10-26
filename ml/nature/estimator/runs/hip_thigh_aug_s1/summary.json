@@ -1,0 +1,34 @@
+{
+  "git_sha": "248e43c-dirty",
+  "data_version": "099eabcbd8356846",
+  "device": "cuda",
+  "torch": "2.6.0+cu124",
+  "channels": [
+    "hip_angle_<leg>",
+    "hip_angle_<leg> (causal derivative)",
+    "thigh_imu_<leg>_accel_x",
+    "thigh_imu_<leg>_accel_y",
+    "thigh_imu_<leg>_accel_z",
+    "thigh_imu_<leg>_gyro_x",
+    "thigh_imu_<leg>_gyro_y",
+    "thigh_imu_<leg>_gyro_z"
+  ],
+  "joints": [
+    "hip"
+  ],
+  "n_train": 1722409,
+  "n_val": 506645,
+  "params": 293601,
+  "seed": 1,
+  "epochs_run": 21,
+  "best_epoch": 10,
+  "val_mse": 0.03633704036474228,
+  "val_hip_rmse": 0.19062277674674988,
+  "val_hip_r2": 0.8064513802528381,
+  "exported_windows": {
+    "preds_val.npz": 682770,
+    "preds_test.npz": 559835,
+    "preds_test_perturbed.npz": 559835
+  },
+  "minutes": 22.43
+}

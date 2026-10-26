@@ -1,0 +1,35 @@
+{
+  "inputs": "hip_thigh",
+  "augment": true,
+  "max_rotation_deg": 15.0,
+  "lever_along_m": 0.1,
+  "lever_across_m": 0.05,
+  "lr": 5e-05,
+  "batch_size": 256,
+  "max_epochs": 100,
+  "patience": 10,
+  "seed": 1,
+  "bf16_on_cuda": true,
+  "max_train_windows": null,
+  "stats_windows": 4000,
+  "git_sha": "248e43c-dirty",
+  "data_version": "099eabcbd8356846",
+  "device": "cuda",
+  "torch": "2.6.0+cu124",
+  "channels": [
+    "hip_angle_<leg>",
+    "hip_angle_<leg> (causal derivative)",
+    "thigh_imu_<leg>_accel_x",
+    "thigh_imu_<leg>_accel_y",
+    "thigh_imu_<leg>_accel_z",
+    "thigh_imu_<leg>_gyro_x",
+    "thigh_imu_<leg>_gyro_y",
+    "thigh_imu_<leg>_gyro_z"
+  ],
+  "joints": [
+    "hip"
+  ],
+  "n_train": 1722409,
+  "n_val": 506645,
+  "params": 293601
+}
