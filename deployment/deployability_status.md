@@ -9,7 +9,7 @@ Split: 14 train / 4 validation / 4 test participants. The test participants are 
 | LOF / Mahalanobis / posterior variance on the LSTM-VAE latent | 15,000-window sample of train | Yes, `deployment/artifacts/awareness_s{0,1,2}.npz` (`deployment/export_awareness.py`), as plain arrays |
 | Boosted-tree regime classifier (HistGradientBoosting; E34, E39) | 14 train (E39). E34's original fit used the 4 validation participants | Yes, the 14-train fit, in the same `awareness_s*.npz` as tree arrays; reproduces notebook 13's test scores exactly |
 | *u* cutoffs (0.21 / 0.85; E35, E39) | 4 validation | Yes, in the same `awareness_s*.npz` (per seed: 0.20 / 0.84, 0.23 / 0.855, 0.19 / 0.855) |
-| Joint-moment estimator, OOD-safe controller: **B1** (hip encoder + thigh IMU, trained across IMU rotation and lever-arm perturbations; E41) | 14 train, 3 seeds | Yes, checkpoints in `ml/nature/estimator/runs/hip_thigh_aug_s{0,1,2}/` (Model A reference: `paper_s*`, E40). Engine path on the Jetson ready and tested (`send_moment.sh`); not yet sent |
+| Joint-moment estimator, OOD-safe controller: **B1** (hip encoder + thigh IMU, trained across IMU rotation and lever-arm perturbations; E41) | 14 train, 3 seeds | Yes, checkpoints in `ml/nature/estimator/runs/hip_thigh_aug_s{0,1,2}/` (Model A reference: `paper_s*`, E40). `hip_thigh_aug_s2` is on the Jetson as a TensorRT engine, checked on real validation windows |
 | Per-person IMU orientation calibration (gravity while standing + sagittal axis from gyro against hip encoder velocity; E41 design) | No fit; computed per wearer | Simulated only (E41 moved-fit test); no implementation for the device yet |
 | Hip-angle forecaster (reliability signal) | Not trained on Nature | No |
 
@@ -62,6 +62,18 @@ PyTorch on the GPU (fp32: 5e-3 N m/kg, fp16: 3e-2). It writes `moment.onnx`, `mo
 input contract: channel order, units, 249 samples at 200 Hz, left-leg mirroring, 50 ms output delay) into the run
 folder. Tested with a randomly initialized stand-in (not a trained model): fp32 engine error 1e-7 N m/kg, 1.85 ms per
 two-leg call (p99 2.1 ms) against 5.9 ms for PyTorch; fp16 is no faster for a network this small, so fp32 is the default.
+
+`send_moment.sh` then runs the **real-data check**: `export_check_windows.py` samples 2048 validation windows (all 26
+tasks; test participants untouched) with the training run's saved predictions, and `check_moment_real.py` runs the engine
+on them on the Jetson, failing unless it matches PyTorch fp32 there and reproduces the run's R². Sent and checked
+2026-10-27 for `hip_thigh_aug_s2` (`check_real.json` on the Jetson):
+
+| On 2048 validation windows | Value |
+|---|---|
+| engine vs PyTorch fp32 on the Jetson, max abs | 7.6e-5 N m/kg |
+| engine vs the cluster's saved predictions (bf16), RMS / max | 0.0013 / 0.0078 N m/kg |
+| hip R², engine / cluster | 0.7530 / 0.7529 (all 26 tasks; 0.807 is the paper-task subset the run summary reports) |
+| Phase 3 windows (738), hip R²: engine / the study's deployed estimator | 0.725 / 0.671 |
 
 The live inputs still have to be produced in the Nature conventions the engine expects: hip angle (deg) and its causal
 derivative (`features.get_causal_velocity`, deg/s), thigh IMU accel (m/s²) and gyro (deg/s) rotated into the Nature thigh

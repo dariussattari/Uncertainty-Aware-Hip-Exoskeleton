@@ -492,7 +492,9 @@ deployment/
   export_awareness.py   fits it as notebook 13 did, checks it reproduces the test scores, saves artifacts/awareness_s*.npz
   test_awareness.py     data-free check of awareness.py (and a saved bundle), runnable on the Jetson
   moment_engine.py      on the Jetson: B1 checkpoint -> ONNX -> TensorRT engine, checked against PyTorch, timed
-  send_moment.sh        sends one estimator run to the Jetson and builds its engine there
+  send_moment.sh        sends one estimator run to the Jetson, builds its engine there, runs the real-data check
+  export_check_windows.py  samples real validation windows + the run's saved predictions for that check
+  check_moment_real.py  on the Jetson: engine vs PyTorch and vs the training run's R² on those windows
   sync_exo_code.sh      commits exo-code edits made on the Jetson and syncs them with ../HipExoGPUCode (branch uncertainty-aware-hip-exo)
 data/
   science-robotics/     supplementary figure data (MATLAB tables) — in git

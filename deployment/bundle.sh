@@ -25,6 +25,7 @@ FILES=(
     deployment/test_awareness.py
     # Joint-moment estimator: ONNX -> TensorRT engine, built and checked on the Jetson
     deployment/moment_engine.py
+    deployment/check_moment_real.py
     # Guide
     deployment/deployability_status.md
 )
