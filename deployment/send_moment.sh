@@ -21,7 +21,7 @@ VENV=${VENV:-venvs/hipexo}
 for f in "$RUN/best.pt" "$RUN/config.json"; do
     [ -f "$f" ] || { echo "missing $f (pull the run from the cluster first)" >&2; exit 1; }
 done
-rsync -aR deployment/moment_engine.py deployment/check_moment_real.py ml/common/models/__init__.py \
+rsync -aR deployment/moment_engine.py deployment/moment_model.py deployment/check_moment_real.py ml/common/models/__init__.py \
     ml/common/models/moment_tcn.py "$RUN/best.pt" "$RUN/config.json" "$JETSON:$REMOTE/"
 ssh "$JETSON" "cd $REMOTE && . ~/$VENV/bin/activate && python deployment/moment_engine.py $RUN $*"
 echo "engine and moment.json are in $JETSON:$REMOTE/$RUN/"

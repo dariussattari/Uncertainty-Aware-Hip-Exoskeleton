@@ -1,5 +1,7 @@
 # Deployability status (Nature data, as of 2026-10-27)
 
+Deployment experiments (D01, D02, ...) are logged in [`docs/EXPERIMENTS.md`](docs/EXPERIMENTS.md).
+
 Split: 14 train / 4 validation / 4 test participants. The test participants are held out from every fit.
 
 | Component | Fitted on | Saved? |

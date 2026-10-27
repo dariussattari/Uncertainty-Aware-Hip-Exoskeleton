@@ -487,6 +487,7 @@ docs/
   CLAUDE.md             project rules for Claude Code (imported by the root CLAUDE.md)
 deployment/
   deployability_status.md  what is ready for the Jetson, what is missing, and the deployment plan
+  docs/                 deployment experiment log: EXPERIMENTS.md index + D01, D02, ... (same format as docs/experiments/)
   bundle.sh             copies the runtime code and checkpoints into deployment/bundle/ (gitignored) to rsync to the Jetson
   awareness.py          on-device awareness layer (numpy/scipy only): novelty scores, regime classifier, causal median, u
   export_awareness.py   fits it as notebook 13 did, checks it reproduces the test scores, saves artifacts/awareness_s*.npz
@@ -495,6 +496,11 @@ deployment/
   send_moment.sh        sends one estimator run to the Jetson, builds its engine there, runs the real-data check
   export_check_windows.py  samples real validation windows + the run's saved predictions for that check
   check_moment_real.py  on the Jetson: engine vs PyTorch and vs the training run's R² on those windows
+  scirob_replay.py      Sci-Rob trials -> B1's input conventions (nominal / calibrated IMU) for the replay (D03)
+  moment_model.py       the estimator in PyTorch only (loader, standardization, left-leg mirroring), shared
+  replay_reference.py   PyTorch reference predictions for the replay (Mac)
+  replay_runner.py      on the Jetson: streams the replay sample by sample through the engine, timed
+  analyze_replay.py     scores B1 vs inverse dynamics vs the exo's online estimator; Jetson vs reference
   sync_exo_code.sh      commits exo-code edits made on the Jetson and syncs them with ../HipExoGPUCode (branch uncertainty-aware-hip-exo)
 data/
   science-robotics/     supplementary figure data (MATLAB tables) — in git

@@ -25,6 +25,9 @@ Gaps were filled from the repository: notebook findings (06, 09, 11, 12), `ml/sc
   unfamiliar tasks; dangerous = ball toss, step-ups, tug of war, sit-to-stand). Their threshold is 1% false alarms on
   the validation participants, they report mean ± SD over 3 seeds, and the test set is scored once.
 
+**Deployment experiments** (getting the controller onto the Jetson) are logged separately, in the same format, as
+D01, D02, ...: [`deployment/docs/EXPERIMENTS.md`](../deployment/docs/EXPERIMENTS.md).
+
 ## Chronological index
 
 ### Phase 1: Science Robotics dataset (Molinaro 2024): reproduce the ankle paper on hip data (Sep 2–29)

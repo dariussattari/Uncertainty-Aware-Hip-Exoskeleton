@@ -30,52 +30,15 @@ import time
 import numpy as np
 import tensorrt as trt
 import torch
-from torch import nn
-from torch.nn.utils import parametrize
 
-REPO = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO / 'ml' / 'common'))
-from models.moment_tcn import MomentTCN  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from moment_model import HIP_DELAY_SAMPLES, MIRRORED, Standardized, get_unit, load_run  # noqa: E402,F401  (re-exported)
 
 TRTEXEC = '/usr/src/tensorrt/bin/trtexec'
 BATCH = 2                                                    # left and right leg, one engine call per tick
 TOLERANCE = {'fp32': 5e-3, 'fp16': 3e-2}                     # N m/kg; the B1 validation RMSE is ~0.19
-MIRRORED = ('accel_z', 'gyro_x', 'gyro_y', 'cop_z')            # channel suffixes negated on the left leg (moment_data.py)
-HIP_DELAY_SAMPLES = 10
 N_CHECK = 64                                                 # check windows, in batches of BATCH
 N_TIMING = 500
-
-
-class Standardized(nn.Module):
-    """The estimator with its training standardization in front: (B, C, T) raw channels -> (B, J) N m/kg."""
-
-    def __init__(self, model: nn.Module, mean: torch.Tensor, std: torch.Tensor) -> None:
-        super().__init__()
-        self.model = model
-        self.register_buffer('mean', mean.float().view(1, -1, 1))                # (1, C, 1)
-        self.register_buffer('std', std.float().view(1, -1, 1))
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.model((x - self.mean) / self.std)
-
-
-def get_unit(channel: str) -> str:
-    """Unit of a Nature input channel, from its name."""
-    units = {'(causal derivative)': 'deg/s', 'angle': 'deg', 'accel': 'm/s^2', 'gyro': 'deg/s', 'force': 'as published', 'cop': 'as published'}
-    return next((u for key, u in units.items() if key in channel), 'unknown')
-
-
-def load_run(run: Path) -> tuple[Standardized, dict]:
-    """The run's best.pt as an eval-mode Standardized model with weight norm folded into plain weights, and the
-    checkpoint's metadata."""
-    ckpt = torch.load(run / 'best.pt', map_location = 'cpu', weights_only = True)
-    model = MomentTCN(len(ckpt['channels']), n_outputs = len(ckpt['joints']))
-    model.load_state_dict(ckpt['model'])
-    for module in model.modules():
-        if parametrize.is_parametrized(module, 'weight'):
-            parametrize.remove_parametrizations(module, 'weight', leave_parametrized = True)
-    meta = {k: ckpt[k] for k in ('channels', 'joints', 'epoch', 'config')}
-    return Standardized(model, ckpt['mean'], ckpt['std']).eval(), meta
 
 
 def export_onnx(model: Standardized, window: int, n_channels: int, path: Path) -> None:

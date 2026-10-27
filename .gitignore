@@ -271,3 +271,5 @@ docs/papers/
 deployment/bundle/
 # Awareness bundles (plain-array .npz); rebuilt by deployment/export_awareness.py
 deployment/artifacts/
+# Replay streams and Jetson replay outputs (deployment/scirob_replay.py, replay_runner.py)
+data/replay/
