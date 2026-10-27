@@ -7,7 +7,7 @@
 | Dataset | Science Robotics 2024 (Molinaro): AB15–AB34, custom hip exo, 1505 trials, 6.3 h, modes LG, RA, RD, SA, SD, ST, TR. None in B1's training data |
 | Status | **Dev complete** (4 participants, 2026-10-27). Final 16 participants not yet run |
 | Sources | D02 (the B1 engine), E41 (B1), E01 (Sci-Rob audit, axis conventions) |
-| Code / notebooks | `deployment/scirob_replay.py` (converter, Mac), `replay_reference.py` (PyTorch reference, Mac), `replay_runner.py` (streaming replay, Jetson), `analyze_replay.py`; streams and predictions in `data/replay/scirob/` (gitignored) |
+| Code / notebooks | `deployment/scirob_replay.py` (converter, Mac), `replay_reference.py` (PyTorch reference, Mac), `replay_runner.py` (streaming replay, Jetson), `analyze_replay.py`, `plot_replay.py` (figures in `docs/figures/D03_*`); streams and predictions in `data/replay/scirob/` (gitignored) |
 
 ## Hypothesis
 
@@ -62,11 +62,15 @@ Moment sign from dev: Sci-Rob's moment and `trq_est` are opposite to B1's (OpenS
 **Jetson vs reference.** 1,599,564 predictions over both variants, on exactly the same samples (asserted): max
 difference 1.6e-3 N·m/kg, 99.9th percentile 3.4e-4.
 
+![Jetson step latency against the 10 ms tick, and the Jetson's difference from the PyTorch reference](figures/D03_dev_device.png)
+
 **Timing on the Jetson** (799,782 streaming steps, two legs each): step median 2.36 ms, p99 2.83 ms, p99.99 4.44 ms; engine
 alone 1.90 ms median. 51 steps over 5 ms, 3 over 10 ms (max 16.5 ms), in a plain Python process with no real-time
 priority. Throughput 2.2× real time.
 
 **Accuracy, hip R² (RMSE N·m/kg):**
+
+![Hip R² per mode for B1 nominal, B1 calibrated and the online estimator](figures/D03_dev_r2_per_mode.png)
 
 | | n | B1 nominal | B1 calibrated | Online `trq_est` |
 |---|---|---|---|---|
@@ -82,10 +86,16 @@ priority. Throughput 2.2× real time.
 
 ST and TR have no samples with inverse dynamics.
 
+![Example traces, AB15 left leg: level walking and stair descent](figures/D03_dev_example_traces.png)
+
+![B1 R² per participant and leg, nominal vs calibrated](figures/D03_dev_calibration.png)
+
 **Timing alignment (diagnostic).** Correlation of each prediction at *t* with the moment at *t* − lag: B1 peaks at lag
 0–5 samples (r 0.859–0.863) rather than the 10 it was trained for (0.840); `trq_est` peaks at 0 (0.919). Sci-Rob's
 inverse-dynamics moment appears to sit about 25–50 ms later relative to the sensors than Nature's. Scored at its best lag,
 B1 would gain roughly 0.02 in r; the fixed rule (lag 10) is kept for every number above.
+
+![Correlation with the moment against lag, B1 and the online estimator](figures/D03_dev_lag_scan.png)
 
 - **(a) holds.** The streaming replay on the Jetson is the reference to 1.6e-3 N·m/kg (TF32 rounding over 1.6 M
   predictions); no sample was predicted on one side and not the other.
