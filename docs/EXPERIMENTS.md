@@ -99,7 +99,7 @@ controller, and can we still operate" (E14).
 - **Sensor health:** reconstruction error and disagreement for faults (E15), plus matched Kalman residuals for timing
   faults (E04).
 
-**Open threads** (ordered as a deployment plan in [`deployability_status.md`](deployability_status.md)):
+**Open threads** (ordered as a deployment plan in [`deployability_status.md`](../deployment/deployability_status.md)):
 
 - Apply the E27 labelling rule to B1, the project's own hip-and-thigh estimator (E41).
 - Fit the torque ramp to the estimator's measured error.

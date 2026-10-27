@@ -266,3 +266,8 @@ notebooks/nature/model_exploration/runs_train_class/**/*.npz
 notebooks/nature/model_exploration/runs_train_class/**/*.pt
 # Reference papers (copyrighted PDFs; public repo)
 docs/papers/
+
+# Jetson bundle: assembled by deployment/bundle.sh from the files above, never committed
+deployment/bundle/
+# Awareness bundles (pickled sklearn fits); rebuilt by deployment/export_awareness.py
+deployment/artifacts/

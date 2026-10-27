@@ -485,6 +485,12 @@ docs/
   EXPERIMENTS.md        chronological index of every experiment, one-line result each
   experiments/          E01–E38: one file per experiment (hypothesis, method, result, conclusion)
   CLAUDE.md             project rules for Claude Code (imported by the root CLAUDE.md)
+deployment/
+  deployability_status.md  what is ready for the Jetson, what is missing, and the deployment plan
+  bundle.sh             copies the runtime code and checkpoints into deployment/bundle/ (gitignored) to rsync to the Jetson
+  awareness.py          on-device awareness layer: novelty scores, regime classifier, causal median, u and cutoffs
+  export_awareness.py   fits it as notebook 13 did, checks it reproduces the test scores, saves artifacts/awareness_s*.pkl
+  test_awareness.py     data-free check of awareness.py (and a saved bundle), runnable on the Jetson
 data/
   science-robotics/     supplementary figure data (MATLAB tables) — in git
   molinaro-raw/         34 subject folders of raw 200 Hz CSVs — gitignored, 6.1 GB
