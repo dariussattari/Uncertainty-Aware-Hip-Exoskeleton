@@ -8,9 +8,15 @@ finite samples, the two windows are mirrored (left leg, from moment.json) and ru
 call. The engine is the one ``moment_engine.py`` built and checked; channels, window and mirroring come from its
 moment.json. Writes data/replay/scirob/predictions/jetson/<subject>.npz: ``pred_<variant>`` (n, 2) N m/kg (NaN where no
 prediction), and per call ``engine_ms`` (engine only) and ``step_ms`` (window assembly, copy in, engine, copy out).
+
+Options for the device tests: ``--variants``, ``--out`` (another predictions folder), ``--gc-freeze`` (collect, freeze
+and disable Python's garbage collector before streaming), ``--cpu N`` (pin the process to one core). Participants whose
+output file exists are skipped, so an interrupted run resumes.
 """
 import argparse
+import gc
 import json
+import os
 from pathlib import Path
 import sys
 import time
@@ -54,23 +60,26 @@ class LegBuffers:
 
 
 def get_subjects(choice: str) -> list[str]:
-    files = sorted(DATA.glob('AB*.npz'))
-    if choice == 'dev':
-        result = [f.stem for f in files if f.stem in DEV]
-    elif choice == 'all':
-        result = [f.stem for f in files]
-    else:
-        result = choice.split(',')
-    return result
+    files = sorted(f.stem for f in DATA.glob('AB*.npz'))
+    groups = {'dev': [s for s in files if s in DEV], 'final': [s for s in files if s not in DEV], 'all': files}
+    return groups.get(choice, choice.split(','))
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description = __doc__.split('\n')[0])
     parser.add_argument('run', type = Path)
-    parser.add_argument('--subjects', default = 'dev', help = "'dev', 'all' or a comma-separated list")
+    parser.add_argument('--subjects', default = 'dev', help = "'dev', 'final', 'all' or a comma-separated list")
+    parser.add_argument('--limit-trials', type = int, default = None, help = 'only the first N trials per participant (smoke test)')
     parser.add_argument('--engine', default = 'moment.engine')
+    parser.add_argument('--variants', default = ','.join(VARIANTS), help = 'comma-separated: nominal, calibrated')
+    parser.add_argument('--out', default = 'jetson', help = 'folder under data/replay/scirob/predictions/')
+    parser.add_argument('--gc-freeze', action = 'store_true', help = "freeze and disable Python's garbage collector")
+    parser.add_argument('--cpu', type = int, default = None, help = 'pin the process to this core')
     args = parser.parse_args()
-    spec = json.loads((args.run / 'moment.json').read_text())
+    variants = args.variants.split(',')
+    if not set(variants) <= set(VARIANTS):
+        raise ValueError(f'unknown variants {variants}; expected some of {VARIANTS}')
+    spec = json.loads((args.run / me.get_spec_name(args.engine)).read_text())
     if spec['engine'] != args.engine:
         raise ValueError(f"moment.json describes {spec['engine']}, not {args.engine}: rebuild with moment_engine.py")
     channels, window = spec['input']['channels'], spec['input']['window_samples']
@@ -78,18 +87,25 @@ def main() -> None:
     if sign.ravel().tolist() != [-1.0 if c in spec['input']['left_leg_negate'] else 1.0 for c in channels]:
         raise ValueError('mirroring rule disagrees with moment.json')
     runner = me.EngineRunner(args.run / args.engine)
-    out = DATA / 'predictions' / 'jetson'
+    out = DATA / 'predictions' / args.out
     out.mkdir(parents = True, exist_ok = True)
-    for subject in get_subjects(args.subjects):
+    if args.cpu is not None:
+        os.sched_setaffinity(0, {args.cpu})
+    if args.gc_freeze:
+        gc.collect()
+        gc.freeze()
+        gc.disable()
+    print(f'variants {variants}, out {out.name}, gc frozen {args.gc_freeze}, cpu {args.cpu}', flush = True)
+    for subject in [s for s in get_subjects(args.subjects) if not (out / f'{s}.npz').exists()]:
         data = np.load(DATA / f'{subject}.npz')
         if [str(c) for c in data['channels']] != channels:
             raise ValueError(f'{subject}: replay channels {data["channels"]} do not match the engine {channels}')
         result, engine_ms, step_ms = {}, [], []
         t0 = time.perf_counter()
-        for variant in VARIANTS:
+        for variant in variants:
             x_all = data[f'x_{variant}']                                         # (N, 2, C), legs unmirrored
             pred = np.full((len(x_all), 2), np.nan, np.float32)
-            for start, length in zip(data['start'], data['length']):
+            for start, length in list(zip(data['start'], data['length']))[:args.limit_trials]:
                 buffers = LegBuffers(window, len(channels))
                 for t in range(length):
                     buffers.push(x_all[start + t])
@@ -105,8 +121,10 @@ def main() -> None:
                         step_ms.append(1e3 * (time.perf_counter() - s0))
                         engine_ms.append(1e3 * (e1 - e0))
             result[f'pred_{variant}'] = pred
-        np.savez(out / f'{subject}.npz', **result, engine_ms = np.array(engine_ms, np.float32),
-                 step_ms = np.array(step_ms, np.float32), stride = STRIDE, engine = args.engine)
+        tmp = out / f'{subject}.tmp.npz'
+        np.savez(tmp, **result, engine_ms = np.array(engine_ms, np.float32), step_ms = np.array(step_ms, np.float32),
+                 stride = STRIDE, engine = args.engine, gc_frozen = args.gc_freeze, cpu = -1 if args.cpu is None else args.cpu)
+        os.replace(tmp, out / f'{subject}.npz')                                 # atomic: a crash never leaves half a file
         print(f'{subject}: {len(step_ms):,} calls in {time.perf_counter() - t0:.0f} s; step median '
               f'{np.median(step_ms):.2f} ms, p99 {np.percentile(step_ms, 99):.2f} ms', flush = True)
 

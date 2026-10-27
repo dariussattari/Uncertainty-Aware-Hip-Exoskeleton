@@ -42,12 +42,14 @@ def get_rows(subject: str, source: str) -> pd.DataFrame:
     ok = t_in_trial >= LAG                                                     # the moment LAG samples earlier, same trial
     lagged[ok] = data['moment'][np.flatnonzero(ok) - LAG]
     frames = []
+    missing = np.full(n, np.nan, np.float32)
+    get = lambda v, leg: pred[f'pred_{v}'][:, leg] if f'pred_{v}' in pred.files else missing   # noqa: E731  (calibrated-only runs)
     for leg, side in enumerate(('l', 'r')):
-        has = np.isfinite(pred['pred_nominal'][:, leg])
+        has = np.isfinite(get('calibrated', leg))
         idx = np.flatnonzero(has)
         frames.append(pd.DataFrame({
             'subject': subject, 'leg': side, 'trial': data['trial'][trial[idx]], 'mode': data['mode'][trial[idx]],
-            'b1_nominal': pred['pred_nominal'][idx, leg], 'b1_calibrated': pred['pred_calibrated'][idx, leg],
+            'b1_nominal': get('nominal', leg)[idx], 'b1_calibrated': get('calibrated', leg)[idx],
             'trq_est': data['trq_est'][idx, leg], 'moment_t': data['moment'][idx, leg], 'moment_lag': lagged[idx, leg]}))
     return pd.concat(frames, ignore_index = True)
 
@@ -69,12 +71,12 @@ def get_metrics(pred: np.ndarray, target: np.ndarray) -> dict[str, float]:
 
 def score(rows: pd.DataFrame, by: list[str]) -> pd.DataFrame:
     """Per group: n and R^2 / RMSE / r of each estimator on the samples where all three exist."""
-    common = rows[['b1_nominal', 'b1_calibrated', 'trq_est', 'moment_t', 'moment_lag']].notna().all(axis = 1)
+    b1 = [c for c in ('b1_nominal', 'b1_calibrated') if rows[c].notna().any()]          # calibrated-only runs have no nominal
+    common = rows[[*b1, 'trq_est', 'moment_t', 'moment_lag']].notna().all(axis = 1)
     out = []
     for key, g in rows[common].groupby(by):
         entry = dict(zip(by, key if isinstance(key, tuple) else (key,)), n = len(g))
-        for name, pred, target in (('B1 nominal', 'b1_nominal', 'moment_lag'), ('B1 calibrated', 'b1_calibrated', 'moment_lag'),
-                                   ('online trq_est', 'trq_est', 'moment_t')):
+        for name, pred, target in [(f'B1 {c[3:]}', c, 'moment_lag') for c in b1] + [('online trq_est', 'trq_est', 'moment_t')]:
             entry.update({f'{name} {k}': v for k, v in get_metrics(g[pred].to_numpy(), g[target].to_numpy()).items()})
         out.append(entry)
     return pd.DataFrame(out)
@@ -105,7 +107,7 @@ def get_lag_scan(subject_files: list[str], sign: float) -> pd.DataFrame:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description = __doc__.split('\n')[0])
-    parser.add_argument('--source', default = 'jetson', choices = ('jetson', 'reference'))
+    parser.add_argument('--source', default = 'jetson', help = "predictions folder: jetson, reference, jetson_final, jetson_fp16, ...")
     parser.add_argument('--subjects', default = 'dev', choices = ('dev', 'final', 'all'))
     args = parser.parse_args()
     pd.set_option('display.width', 250)
@@ -129,13 +131,13 @@ def main() -> None:
     print(by_leg[[c for c in by_leg if c in ('leg', 'n') or c.endswith('r2')]].round(3).to_string(index = False))
     score(rows, ['subject', 'mode']).to_csv(PRED / f'{args.source}_{args.subjects}_scores.csv', index = False)
 
-    if args.source == 'jetson':
+    if args.source.startswith('jetson') or args.source.startswith('jitter'):
         diffs = []
         for s in subjects:
             ref_file = PRED / 'reference' / f'{s}.npz'
             if ref_file.exists():
-                ref, jet = np.load(ref_file), np.load(PRED / 'jetson' / f'{s}.npz')
-                for v in sr.VARIANTS:
+                ref, jet = np.load(ref_file), np.load(PRED / args.source / f'{s}.npz')
+                for v in [v for v in sr.VARIANTS if f'pred_{v}' in jet.files]:
                     a, b = ref[f'pred_{v}'], jet[f'pred_{v}']
                     if not np.array_equal(np.isfinite(a), np.isfinite(b)):
                         raise AssertionError(f'{s} {v}: the Jetson predicted on different samples than the reference')

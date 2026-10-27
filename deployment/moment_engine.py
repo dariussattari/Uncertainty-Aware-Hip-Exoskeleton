@@ -41,6 +41,11 @@ N_CHECK = 64                                                 # check windows, in
 N_TIMING = 500
 
 
+def get_spec_name(engine: str) -> str:
+    """The input-contract file written next to an engine: moment.json for moment.engine, moment_fp16.json for fp16."""
+    return 'moment.json' if engine == 'moment.engine' else engine.replace('.engine', '.json')
+
+
 def export_onnx(model: Standardized, window: int, n_channels: int, path: Path) -> None:
     """Static shape (BATCH, C, window): TensorRT then needs no optimization profile."""
     dummy = torch.zeros(BATCH, n_channels, window)
@@ -144,7 +149,7 @@ def main() -> None:
             'latency_ms': {'engine_median': engine_ms[0], 'engine_p99': engine_ms[1], 'torch_median': torch_ms[0],
                            'torch_p99': torch_ms[1]},
             'checkpoint_epoch': meta['epoch'], 'train_config': meta['config']}
-    (args.run / 'moment.json').write_text(json.dumps(spec, indent = 2))
+    (args.run / get_spec_name(engine_path.name)).write_text(json.dumps(spec, indent = 2))
     print(f'{engine_path}: max |engine - torch| {max_err:.2e} N m/kg; latency per {BATCH}-leg call: engine '
           f'{engine_ms[0]:.2f} ms (p99 {engine_ms[1]:.2f}), torch {torch_ms[0]:.2f} ms (p99 {torch_ms[1]:.2f})')
 

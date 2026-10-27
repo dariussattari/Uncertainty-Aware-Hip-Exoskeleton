@@ -5,7 +5,7 @@
 | ID | D03 |
 | Date | 2026-10-27 |
 | Dataset | Science Robotics 2024 (Molinaro): AB15–AB34, custom hip exo, 1505 trials, 6.3 h, modes LG, RA, RD, SA, SD, ST, TR. None in B1's training data |
-| Status | **Dev complete** (4 participants, 2026-10-27). Final 16 participants not yet run |
+| Status | **Dev complete** (4 participants, 2026-10-27). Final 16: predictions produced **sealed** on the Jetson overnight 2026-10-27 (D04's T1: calibrated variant, `predictions/jetson_final/`); not analyzed |
 | Sources | D02 (the B1 engine), E41 (B1), E01 (Sci-Rob audit, axis conventions) |
 | Code / notebooks | `deployment/scirob_replay.py` (converter, Mac), `replay_reference.py` (PyTorch reference, Mac), `replay_runner.py` (streaming replay, Jetson), `analyze_replay.py`, `plot_replay.py` (figures in `docs/figures/D03_*`); streams and predictions in `data/replay/scirob/` (gitignored) |
 
@@ -117,4 +117,6 @@ B1 would gain roughly 0.02 in r; the fixed rule (lag 10) is kept for every numbe
   most on stairs. Candidate causes, testable next: the moment-timing offset (about 0.02 r), stair loading the thigh
   cannot see (E41's unseen-task finding), and the accelerometer scale errors on AB28 and AB29.
 - **For the real-time loop:** run with real-time priority or isolate the core; 3 in 800,000 steps missed a tick here.
-- **Next:** score the final 16 participants once (about 2.5–3 h on the Jetson at this cadence).
+- **Final 16:** their calibrated predictions exist (sealed, produced by D04's T1) and stay unanalyzed until B1's
+  deployed form is decided. Post-processing changes (output filter, scoring lag) can be applied to them; retraining B1
+  cannot.

@@ -502,6 +502,9 @@ deployment/
   replay_runner.py      on the Jetson: streams the replay sample by sample through the engine, timed
   analyze_replay.py     scores B1 vs inverse dynamics vs the exo's online estimator; Jetson vs reference
   plot_replay.py        D03's figures (accuracy per mode, traces, calibration, lag scan, device) -> docs/figures/
+  overnight.sh          unattended device-test battery on the Jetson (D04), then auto shutdown; SMOKE=1 for a quick pass
+  soak_test.py          on the Jetson: hours of streaming at true 100 Hz pacing, per-tick timing and memory
+  latency_budget.py     on the Jetson: per-window latency of every controller component (stand-in weights)
   sync_exo_code.sh      commits exo-code edits made on the Jetson and syncs them with ../HipExoGPUCode (branch uncertainty-aware-hip-exo)
 data/
   science-robotics/     supplementary figure data (MATLAB tables) — in git
