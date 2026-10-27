@@ -269,5 +269,5 @@ docs/papers/
 
 # Jetson bundle: assembled by deployment/bundle.sh from the files above, never committed
 deployment/bundle/
-# Awareness bundles (pickled sklearn fits); rebuilt by deployment/export_awareness.py
+# Awareness bundles (plain-array .npz); rebuilt by deployment/export_awareness.py
 deployment/artifacts/

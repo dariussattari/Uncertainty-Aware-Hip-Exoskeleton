@@ -1,4 +1,4 @@
-# Deployability status (Nature data, as of 2026-10-25)
+# Deployability status (Nature data, as of 2026-10-27)
 
 Split: 14 train / 4 validation / 4 test participants. The test participants are held out from every fit.
 
@@ -6,50 +6,108 @@ Split: 14 train / 4 validation / 4 test participants. The test participants are 
 |---|---|---|
 | LSTM-VAE (novelty encoder, 3 s raw, β 1; E31) | 14 train, 3 seeds | Yes, checkpoints in `notebooks/nature/model_exploration/runs/vae/` |
 | TCN-VAE (regime latent, ID + OOD-safe, 3 s + spectral, β 128; E33) | 14 train, 3 seeds | Yes, checkpoints in `notebooks/nature/model_exploration/runs_train_class/` |
-| LOF / Mahalanobis / posterior variance on the LSTM-VAE latent | 15,000-window sample of train | Yes, `deployment/artifacts/awareness_s{0,1,2}.pkl` (`deployment/export_awareness.py`) |
-| Boosted-tree regime classifier (HistGradientBoosting; E34, E39) | 14 train (E39). E34's original fit used the 4 validation participants | Yes, the 14-train fit, in the same `awareness_s*.pkl`; reproduces notebook 13's test scores exactly |
-| *u* cutoffs (0.21 / 0.85; E35, E39) | 4 validation | Yes, in the same `awareness_s*.pkl` (per seed: 0.20 / 0.84, 0.23 / 0.855, 0.19 / 0.855) |
-| Joint-moment estimator, OOD-safe controller: **B1** (hip encoder + thigh IMU, trained across IMU rotation and lever-arm perturbations; E41) | 14 train, 3 seeds | Yes, checkpoints in `ml/nature/estimator/runs/hip_thigh_aug_s{0,1,2}/` (Model A reference: `paper_s*`, E40) |
+| LOF / Mahalanobis / posterior variance on the LSTM-VAE latent | 15,000-window sample of train | Yes, `deployment/artifacts/awareness_s{0,1,2}.npz` (`deployment/export_awareness.py`), as plain arrays |
+| Boosted-tree regime classifier (HistGradientBoosting; E34, E39) | 14 train (E39). E34's original fit used the 4 validation participants | Yes, the 14-train fit, in the same `awareness_s*.npz` as tree arrays; reproduces notebook 13's test scores exactly |
+| *u* cutoffs (0.21 / 0.85; E35, E39) | 4 validation | Yes, in the same `awareness_s*.npz` (per seed: 0.20 / 0.84, 0.23 / 0.855, 0.19 / 0.855) |
+| Joint-moment estimator, OOD-safe controller: **B1** (hip encoder + thigh IMU, trained across IMU rotation and lever-arm perturbations; E41) | 14 train, 3 seeds | Yes, checkpoints in `ml/nature/estimator/runs/hip_thigh_aug_s{0,1,2}/` (Model A reference: `paper_s*`, E40). Engine path on the Jetson ready and tested (`send_moment.sh`); not yet sent |
 | Per-person IMU orientation calibration (gravity while standing + sagittal axis from gyro against hip encoder velocity; E41 design) | No fit; computed per wearer | Simulated only (E41 moved-fit test); no implementation for the device yet |
 | Hip-angle forecaster (reliability signal) | Not trained on Nature | No |
 
 E39 also fitted the classifier on train + val (18 people), but only as a comparison. The recommended fit is train only
 with the *u* cutoffs set on validation.
 
+## The Jetson
+
+| | |
+|---|---|
+| Board | Jetson Orin Nano Developer Kit Super, JetPack 6.2.1 (L4T R36.4.7), Ubuntu 22.04, 7.4 GB RAM, 58 GB SD card |
+| Access | USB-C to the Mac: the Jetson is `192.168.55.1`. `ssh jetson` (alias in `~/.ssh/config`, user `uncertainty_aware`, key login); VS Code: Remote-SSH → `jetson` |
+| Python | venv `~/venvs/hipexo` (Python 3.10, `--system-site-packages` so the system TensorRT imports). Activate: `. ~/venvs/hipexo/bin/activate` |
+| GPU stack | CUDA 12.6, cuDNN 9.3, TensorRT 10.3 (system), torch 2.8.0 (NVIDIA's Jetson build, `pypi.jetson-ai-lab.io/jp6/cu126`), pycuda 2024.1 (built on the board) |
+| Pinned packages | The lab's `new_env` versions: numpy 1.26.4, scipy 1.14.0, pandas 2.2.2, scikit-learn 1.5.1, python-can 4.4.2, pyyaml 6.0.1, matplotlib 3.9.1; plus onnx 1.17.0 |
+| Lab code | `~/HipExoGPUCode`, branch `dev/lucien` (git clone of a bundle, origin set to GitHub). Its modules import; its `online_deployed/model/current_best_tcn_new.trt` does **not** load (built by an older TensorRT): rebuild it here from the lab's ONNX before running `main.py` |
+| This repo | `~/hip-exo` (filled by `bundle.sh` or `send_moment.sh`; code only so far) |
+| No internet | Wheels are downloaded on the Mac (`pip download --platform manylinux2014_aarch64 --python-version 3.10 ...`) and installed with `pip install --no-index --find-links ~/wheels`; the cached wheels are in `~/wheels` |
+| Clock | Not synced (no internet): it reads 1969. Set it once per boot until it has internet: `ssh -t jetson "sudo date -s '$(date -u +%Y-%m-%dT%H:%M:%SZ)'"` |
+
+`can0` is already up on the board. Nothing here installs services or touches CAN.
+
+**Editing the exo code.** `~/HipExoGPUCode` on the Jetson and `../HipExoGPUCode` on the Mac are both on branch
+`uncertainty-aware-hip-exo` (the lab's `dev/lucien` plus your commits), linked by git over SSH: the Mac repo has a
+`jetson` remote, and the Jetson repo accepts pushes into its checkout (`receive.denyCurrentBranch updateInstead`). Edit
+on the Jetson (VS Code Remote-SSH → `jetson`, open `~/HipExoGPUCode`), then from the Mac:
+
+```bash
+deployment/sync_exo_code.sh "What I changed"
+```
+
+It commits the Jetson's changes there (as you, dated by the Mac's clock; files over 20 MB are refused), fast-forwards the
+Mac's branch, or pushes the Mac's commits to the Jetson if the Mac is ahead, and stops if the two have diverged. It never
+pushes to GitHub (the lab's `Harvard-Slade-Lab/HipExoGPUCode`): `git -C ../HipExoGPUCode push origin uncertainty-aware-hip-exo`
+when you choose to.
+
+## Sending the joint-moment estimator
+
+B1's best seed on validation is `hip_thigh_aug_s2` (hip R² 0.807, RMSE 0.190 N m/kg; seeds 0 and 1: 0.805, 0.806). One
+command from the Mac sends that run's `best.pt` + `config.json` and the code that loads it, then builds and checks the
+engine on the Jetson:
+
+```bash
+deployment/send_moment.sh                                   # hip_thigh_aug_s2; or: deployment/send_moment.sh <run_dir> [--fp16]
+```
+
+On the Jetson, `deployment/moment_engine.py` folds the input standardization into the network (raw units in, N m/kg
+out), exports ONNX (static batch 2: left, right leg), builds the engine with `trtexec`, and fails unless it matches
+PyTorch on the GPU (fp32: 5e-3 N m/kg, fp16: 3e-2). It writes `moment.onnx`, `moment.engine` and `moment.json` (the
+input contract: channel order, units, 249 samples at 200 Hz, left-leg mirroring, 50 ms output delay) into the run
+folder. Tested with a randomly initialized stand-in (not a trained model): fp32 engine error 1e-7 N m/kg, 1.85 ms per
+two-leg call (p99 2.1 ms) against 5.9 ms for PyTorch; fp16 is no faster for a network this small, so fp32 is the default.
+
+The live inputs still have to be produced in the Nature conventions the engine expects: hip angle (deg) and its causal
+derivative (`features.get_causal_velocity`, deg/s), thigh IMU accel (m/s²) and gyro (deg/s) rotated into the Nature thigh
+frame (step 7's calibration), left leg mirrored. The lab's `online_deployed` pipeline uses a different model and input
+layout (14 features, 186 samples), so wiring B1 into its CAN loop is a separate change to that repo.
+
 ## What goes on the Jetson
 
-`deployment/bundle.sh` copies the runtime files into `deployment/bundle/` (gitignored, about 10 MB) with their repo paths
+`deployment/bundle.sh` copies the runtime files into `deployment/bundle/` (gitignored, about 25 MB) with their repo paths
 kept, so the `ml/` imports work unchanged, and writes `VERSION` (git SHA) and `SHA256SUMS`. It stops and lists any
-checkpoint missing locally. Edit its file list and this table together.
+checkpoint missing locally. Edit its file list and this table together. The rsync filters keep engines built on the Jetson.
 
 ```bash
 deployment/bundle.sh
-rsync -a --delete deployment/bundle/ <user>@<jetson>:~/hip-exo/
-ssh <user>@<jetson> 'cd ~/hip-exo && sha256sum -c SHA256SUMS'
+rsync -a --delete --filter='P *.engine' --filter='P moment.onnx' --filter='P moment.json' deployment/bundle/ jetson:~/hip-exo/
+ssh jetson 'cd ~/hip-exo && sha256sum -c SHA256SUMS'
 ```
 
 | In the bundle | Role | Source |
 |---|---|---|
 | `ml/common/models/moment_tcn.py` + `hip_thigh_aug_s{0,1,2}/best.pt` | B1 joint-moment estimator, 8 channels per leg | E41 |
+| `deployment/moment_engine.py` | Builds and checks B1's TensorRT engine on the Jetson (see above) | |
 | `ml/common/models/seq_vae.py` + `lstm_vae_raw_3s_b1_fixed_s{0,1,2}/best.pt` | Novelty encoder, 16 channels, 3 s | E31 |
 | `seq_vae.py` + `tcn_vae_raw_3s_spectral_b128_fixed_s{0,1,2}/best.pt` | Regime latent, 23 channels (16 raw + spectral), 3 s | E33 |
 | `ml/common/features.py` | Causal spectral features for the TCN-VAE input | E21 |
 | `ml/common/signals.py`, `ml/nature/estimator/imu_fit.py` | IMU frame solver and rotation / lever-arm model, for per-wearer calibration | E41 |
-| `deployment/awareness.py` + `deployment/artifacts/awareness_s{0,1,2}.pkl` | Novelty scores, boosted-tree regime classifier, 0.5 s causal median, *u* and its cutoffs | E39 |
-| `deployment/test_awareness.py` | Data-free check, run on the device: `python deployment/test_awareness.py deployment/artifacts/awareness_s0.pkl` | |
+| `deployment/awareness.py` + `deployment/artifacts/awareness_s{0,1,2}.npz` | Novelty scores, boosted-tree regime classifier, 0.5 s causal median, *u* and its cutoffs | E39 |
+| `deployment/test_awareness.py` | Data-free check, run on the device: `python deployment/test_awareness.py deployment/artifacts/awareness_s0.npz` | |
 
 Each `best.pt` holds the weights, the input standardization (`mean`, `std`) and the training config, so no dataset
-files go on the device. Python dependencies: `torch`, `numpy`, `scipy`, `pandas` (the last two for `features.py`), and `scikit-learn` at
-the version that wrote the awareness bundles (`bundle.meta['sklearn']`, 1.9.0): pickled estimators are not portable
-across versions.
+files go on the device. Device dependencies: `torch`, `numpy`, `scipy`, `pandas` (for `features.py`), TensorRT. The
+awareness bundles need **no scikit-learn**.
 
-**Awareness bundles.** `deployment/export_awareness.py` (on the Mac, needs the local data) refits the novelty scores,
-classifier and *u* cutoffs exactly as notebook 13 did for the 14-person training fit, runs them through
-`awareness.py` window by window as the device will, and saves `deployment/artifacts/awareness_s{seed}.pkl` (gitignored)
-only if every seed reproduces the notebook's test results (`13_regime_scores.csv`, `13_uncertainty_scores.csv`) to
-1e-9. Each bundle holds the LOF (k = 20, its 15,000-window reference set inside), Mahalanobis mean and Cholesky factor,
-the posterior-variance active units, the classifier, the two cutoffs and metadata (runs, git SHA, data version, library
-versions). Per window on the device:
+**Awareness bundles.** `deployment/export_awareness.py` (on the Mac with scikit-learn 1.9.0, needs the local data) refits
+the novelty scores, classifier and *u* cutoffs exactly as notebook 13 did for the 14-person training fit, converts the
+fitted LOF (k = 20, its 15,000 reference latents with their k-distances and reachability densities) and the boosted trees
+(183 trees, 11,163 nodes) to plain arrays, and saves `deployment/artifacts/awareness_s{seed}.npz` (gitignored, 5–6 MB,
+no pickles) only if: the numpy LOF matches the notebook's cached novelty scores (1e-6), the numpy tree walk matches
+scikit-learn's probabilities (1e-12), and the result, run window by window as on the device, reproduces the notebook's
+test results (`13_regime_scores.csv`, `13_uncertainty_scores.csv`) to 1e-9. Novelty scoring takes about 5.8 ms per window
+on the Jetson, nearly all of it the LOF neighbour search (windows arrive every 50 ms).
+
+Why array form: scikit-learn 1.9.0 needs Python ≥ 3.11, and the Jetson's GPU PyTorch is built for 3.10. Refitting under
+scikit-learn 1.7.2 (the newest for 3.10) gives a slightly different classifier, within seed noise of the validated one
+(test macro F1 on *u* 0.874 ± 0.006 against 0.875 ± 0.006; dangerous recall 0.823 against 0.817; 0.006% of dangerous
+windows to the spline against 0%), so the validated fit is kept and shipped as arrays. Per window on the device:
 
 ```python
 import awareness as aw
@@ -57,7 +115,7 @@ bundle = aw.load_bundle(path)                          # once
 smoother = aw.CausalMedian()                           # once per stream
 novelty = aw.score_novelty(bundle.novelty, lstm_z, lstm_logvar)                # (1, 32) x 2 -> (1, 3)
 x = aw.get_features(tcn_z, novelty, rhythm)                                     # (1, 32), (1, 3), (1, 7) -> (1, 42)
-p = smoother.push(end_sample, aw.get_proba(bundle.classifier, x)[0])           # (3,)
+p = smoother.push(end_sample, aw.get_proba(bundle.trees, x)[0])                # (3,)
 regime = aw.get_regime(aw.get_uncertainty(p), bundle.cutoffs)                  # spline / estimator / exo off
 ```
 

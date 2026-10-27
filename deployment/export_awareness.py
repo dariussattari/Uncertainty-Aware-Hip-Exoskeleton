@@ -1,10 +1,12 @@
-"""Fit the awareness layer as notebook 13 (E39) did and save one bundle per seed to deployment/artifacts/.
+"""Fit the awareness layer as notebook 13 (E39) did and save one bundle per seed to deployment/artifacts/ (.npz).
 
 The training fit: novelty scores on the fit part of the LSTM-VAE's exported ID-safe training windows; the boosted-tree
 regime classifier on the 14 training participants (without the novelty scores' own fit windows); the two u cutoffs on
-the 4 validation participants. Each bundle is then run through ``awareness.py`` (window by window for the smoothing,
-as on the device) and must reproduce, to 1e-9, the notebook's test-participant results in
-``onboard/results/13_regime_scores.csv`` (train fit) and ``13_uncertainty_scores.csv``. Nothing is saved if it does not.
+the 4 validation participants. The fitted LOF and trees are converted to plain arrays (``get_lof_arrays``,
+``get_trees``), so the device needs no scikit-learn. Each bundle is then run through ``awareness.py`` (window by window
+for the smoothing, as on the device): its novelty scores and class probabilities must match scikit-learn's, and it must
+reproduce, to 1e-9, the notebook's test-participant results in ``onboard/results/13_regime_scores.csv`` (train fit) and
+``13_uncertainty_scores.csv``. Nothing is saved if any check fails.
 
 Needs the local data (data/processed_nature/ae, the runs' latents*.npz, the novelty cache). Run from the repo root:
 
@@ -22,6 +24,7 @@ import pandas as pd
 import scipy
 import sklearn
 from sklearn.ensemble import HistGradientBoostingClassifier
+from sklearn.neighbors import LocalOutlierFactor
 
 REPO = Path(__file__).resolve().parents[1]
 ONBOARD = REPO / 'notebooks' / 'nature' / 'model_exploration' / 'onboard'
@@ -65,6 +68,37 @@ def get_streamed(proba: npt.NDArray, labels: pd.DataFrame) -> npt.NDArray[np.flo
     return out
 
 
+def get_lof_arrays(lof: LocalOutlierFactor) -> dict[str, npt.NDArray | float]:
+    """A fitted novelty LOF as the arrays ``awareness.score_lof`` needs: reference points, their k-distances and local
+    reachability densities, and the largest finite LOF on the reference set."""
+    if lof.n_neighbors_ != aw.LOF_NEIGHBORS or lof.effective_metric_ != 'euclidean':
+        raise ValueError(f'expected a Euclidean LOF with k = {aw.LOF_NEIGHBORS}, got k = {lof.n_neighbors_}, {lof.effective_metric_}')
+    own = -lof.negative_outlier_factor_
+    return {'lof_fit': lof._fit_X.astype(np.float64), 'lof_kdist': lof._distances_fit_X_[:, -1].astype(np.float64),
+            'lof_lrd': lof._lrd.astype(np.float64), 'lof_cap': float(own[np.isfinite(own)].max())}
+
+
+def get_trees(clf: HistGradientBoostingClassifier) -> aw.Trees:
+    """A fitted multiclass HistGradientBoostingClassifier on numeric features as flat node arrays."""
+    if clf.is_categorical_ is not None or clf._preprocessor is not None:
+        raise ValueError('categorical features are not supported by awareness.get_proba')
+    nodes, roots, offset = [], [], 0
+    for iteration in clf._predictors:
+        roots.append([])
+        for predictor in iteration:
+            roots[-1].append(offset)
+            nodes.append(predictor.nodes)
+            offset += len(predictor.nodes)
+    starts = np.repeat(np.array([r for it in roots for r in it]), [len(n) for n in nodes])   # tree offset per node
+    flat = np.concatenate(nodes)
+    return aw.Trees(feature = flat['feature_idx'].astype(np.int64), threshold = flat['num_threshold'].astype(np.float64),
+                    missing_left = flat['missing_go_to_left'].astype(bool),
+                    left = flat['left'].astype(np.int64) + starts, right = flat['right'].astype(np.int64) + starts,
+                    is_leaf = flat['is_leaf'].astype(bool), value = flat['value'].astype(np.float64),
+                    roots = np.array(roots, dtype = np.int64), baseline = clf._baseline_prediction.ravel().astype(np.float64),
+                    classes = tuple(str(c) for c in clf.classes_))
+
+
 def get_git_sha() -> str:
     sha = subprocess.run(['git', 'rev-parse', '--short', 'HEAD'], cwd = REPO, capture_output = True, text = True, check = True)
     dirty = subprocess.run(['git', 'diff', '--quiet', 'HEAD'], cwd = REPO).returncode != 0
@@ -72,8 +106,8 @@ def get_git_sha() -> str:
 
 
 def export_seed(seed: int, tables: dict[str, pd.DataFrame], rows: dict[str, pd.DataFrame], y: dict[str, npt.NDArray],
-                expected: dict[str, pd.Series]) -> aw.AwarenessBundle:
-    """Fit, check against notebook 13 and return one seed's bundle."""
+                expected: dict[str, pd.Series]) -> tuple[aw.AwarenessBundle, npt.NDArray[np.float64]]:
+    """Fit, check against sklearn and notebook 13; return one seed's bundle and some test features for the round trip."""
     enc, det = Path(str(ENCODER).format(seed = seed)), Path(str(DETECTOR).format(seed = seed))
     keys = {s: r[['rec', 'end']] for s, r in rows.items()}
 
@@ -82,7 +116,7 @@ def export_seed(seed: int, tables: dict[str, pd.DataFrame], rows: dict[str, pd.D
     fit_idx, _ = ns.get_fit_split(int(export['is_train'].sum()))
     z_fit, logvar_fit = export['z'][export['is_train']][fit_idx], export['logvar'][export['is_train']][fit_idx]
     lof = LatentLOF(n_neighbors = aw.LOF_NEIGHBORS, fit_samples = None, seed = ns.SPLIT_SEED).fit(z_fit.astype(np.float32)).lof
-    novelty_fit = aw.fit_novelty(lof, z_fit, logvar_fit)
+    novelty_fit = aw.fit_novelty(z_fit, logvar_fit, **get_lof_arrays(lof))
 
     # features for every split through awareness.py, checked against the notebook's cached novelty scores
     reference = rc.get_novelty(det, tables['raw_3s'], {s: keys[s] for s in ('val', 'test')}, list(aw.NOVELTY), CACHE)
@@ -99,10 +133,15 @@ def export_seed(seed: int, tables: dict[str, pd.DataFrame], rows: dict[str, pd.D
     fit_windows = rc.get_score_fit_windows(det, tables['raw_3s'])
     in_sample = keys['train'].merge(fit_windows.assign(hit = True), on = ['rec', 'end'], how = 'left')['hit'].notna().to_numpy()
     classifier = HistGradientBoostingClassifier(**CLASSIFIER, random_state = seed).fit(x['train'][~in_sample], y['train'][~in_sample])
+    trees = get_trees(classifier)
 
-    # cutoffs on validation; the test participants scored once, as on the device, against the notebook
-    proba = {s: get_streamed(aw.get_proba(classifier, x[s]), rows[s]) for s in ('val', 'test')}
-    np.testing.assert_allclose(proba['test'], rc.get_smoothed(aw.get_proba(classifier, x['test']), rows['test']), atol = 1e-12)
+    # the tree arrays against sklearn, then cutoffs on validation and the test participants scored once, as on the device
+    raw = {s: aw.get_proba(trees, x[s]) for s in ('val', 'test')}
+    for s in ('val', 'test'):
+        sk = pd.DataFrame(classifier.predict_proba(x[s]), columns = classifier.classes_)[list(aw.REGIMES)].to_numpy()
+        np.testing.assert_allclose(raw[s], sk, atol = 1e-12, err_msg = f'seed {seed}, {s}: tree arrays vs sklearn')
+    proba = {s: get_streamed(raw[s], rows[s]) for s in ('val', 'test')}
+    np.testing.assert_allclose(proba['test'], rc.get_smoothed(raw['test'], rows['test']), atol = 1e-12)
     cutoffs = rc.get_cutoffs(aw.get_uncertainty(proba['val']), y['val'])
     argmax = rc.get_regime_metrics(y['test'], np.array(aw.REGIMES)[proba['test'].argmax(axis = 1)])
     banded = rc.get_regime_metrics(y['test'], aw.get_regime(aw.get_uncertainty(proba['test']), cutoffs))
@@ -120,9 +159,10 @@ def export_seed(seed: int, tables: dict[str, pd.DataFrame], rows: dict[str, pd.D
             'fit': 'train (14 participants), u cutoffs on val (4)', 'n_classifier_windows': int((~in_sample).sum()),
             'n_novelty_fit_windows': len(z_fit), 'test_macro_f1_u': banded['macro F1'], 'git_sha': get_git_sha(),
             'data_version': json.loads((det / 'config.json').read_text())['data_version'],
-            'sklearn': sklearn.__version__, 'numpy': np.__version__, 'scipy': scipy.__version__,
+            'fitted_with': {'sklearn': sklearn.__version__, 'numpy': np.__version__, 'scipy': scipy.__version__},
+            'n_trees': int(trees.roots.size), 'n_nodes': int(len(trees.value)),
             'features': [f'tcn_z{i}' for i in range(aw.LATENT_DIM)] + list(aw.NOVELTY) + list(aw.RHYTHM)}
-    return aw.AwarenessBundle(novelty = novelty_fit, classifier = classifier, cutoffs = cutoffs, meta = meta)
+    return aw.AwarenessBundle(novelty = novelty_fit, trees = trees, cutoffs = cutoffs, meta = meta), x['test'][:2000]
 
 
 def main() -> None:
@@ -136,13 +176,16 @@ def main() -> None:
                 'u': pd.read_csv(RESULTS / '13_uncertainty_scores.csv').set_index('seed')}
     bundles = [export_seed(seed, tables, rows, y, expected) for seed in SEEDS]       # every seed checked before saving
     OUT.mkdir(exist_ok = True)
-    for bundle in bundles:
-        path = OUT / f"awareness_s{bundle.meta['seed']}.pkl"
+    for bundle, x_check in bundles:
+        path = OUT / f"awareness_s{bundle.meta['seed']}.npz"
         aw.save_bundle(bundle, path)
-        loaded = aw.load_bundle(path)
-        x = np.zeros((1, aw.N_FEATURES))
-        np.testing.assert_allclose(aw.get_proba(loaded.classifier, x), aw.get_proba(bundle.classifier, x))
-        print(f'wrote {path.relative_to(REPO)}')
+        loaded = aw.load_bundle(path)                                                   # round trip: same outputs
+        z = bundle.novelty.lof_fit[:500] + 0.01
+        np.testing.assert_array_equal(aw.score_novelty(loaded.novelty, z, np.zeros_like(z, dtype = np.float32)),
+                                      aw.score_novelty(bundle.novelty, z, np.zeros_like(z, dtype = np.float32)))
+        np.testing.assert_array_equal(aw.get_proba(loaded.trees, x_check), aw.get_proba(bundle.trees, x_check))
+        assert loaded.cutoffs == bundle.cutoffs
+        print(f'wrote {path.relative_to(REPO)} ({path.stat().st_size / 1e6:.1f} MB)')
     print(f'{time.time() - t0:.0f} s')
 
 

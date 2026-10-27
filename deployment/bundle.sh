@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Copy what the Jetson runs into deployment/bundle/, keeping repo-relative paths so the ml/ imports resolve unchanged.
 # The list follows deployment/deployability_status.md ("What goes on the Jetson"); edit both together.
-# Usage:  deployment/bundle.sh && rsync -a --delete deployment/bundle/ <user>@<jetson>:~/hip-exo/
+# Usage:  deployment/bundle.sh && rsync -a --delete --filter='P *.engine' --filter='P moment.onnx' --filter='P moment.json' \
+#             deployment/bundle/ jetson:~/hip-exo/        (P = keep the engines built on the Jetson)
 # On the Jetson:  cd ~/hip-exo && sha256sum -c SHA256SUMS
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -22,6 +23,8 @@ FILES=(
     # Awareness layer: novelty scores, regime classifier, u cutoffs (fitted by deployment/export_awareness.py)
     deployment/awareness.py
     deployment/test_awareness.py
+    # Joint-moment estimator: ONNX -> TensorRT engine, built and checked on the Jetson
+    deployment/moment_engine.py
     # Guide
     deployment/deployability_status.md
 )
@@ -30,7 +33,7 @@ for s in 0 1 2; do
     FILES+=("$EST/hip_thigh_aug_s$s/best.pt" "$EST/hip_thigh_aug_s$s/config.json")
     FILES+=("$VAE/lstm_vae_raw_3s_b1_fixed_s$s/best.pt" "$VAE/lstm_vae_raw_3s_b1_fixed_s$s/config.json")
     FILES+=("$TCN/tcn_vae_raw_3s_spectral_b128_fixed_s$s/best.pt" "$TCN/tcn_vae_raw_3s_spectral_b128_fixed_s$s/config.json")
-    FILES+=("deployment/artifacts/awareness_s$s.pkl")
+    FILES+=("deployment/artifacts/awareness_s$s.npz")
 done
 
 missing=()
