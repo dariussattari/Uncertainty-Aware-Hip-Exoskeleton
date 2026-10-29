@@ -52,17 +52,17 @@ def plot_tasks(df: pd.DataFrame) -> None:
     fig, ax = plt.subplots(figsize = (7.6, 7.4))
     y = np.arange(len(t))
     h = 0.38
-    ax.barh(y + h / 2, t['B1'].clip(lower = -1), h, color = B1_COLOR, label = 'B1', zorder = 3)
-    ax.barh(y - h / 2, t['Nature Estimator'].clip(lower = -1), h, color = NATURE_COLOR, label = 'Nature Estimator', zorder = 3)
+    ax.barh(y + h / 2, t['B1'], h, color = B1_COLOR, label = 'B1', zorder = 3)
+    ax.barh(y - h / 2, t['Nature Estimator'], h, color = NATURE_COLOR, label = 'Nature Estimator', zorder = 3)
     labels = [f"{r.task.replace('_', ' ')}{'' if r.trained else ' *'}" for r in t.itertuples()]
     ax.set_yticks(y, labels, fontsize = 7.5)
     ax.axvline(0, color = MUTED, lw = 0.8)
-    ax.set_xlim(-1, 1)
-    ax.set_xlabel('Hip moment R² vs Ground Truth (clipped at −1)')
+    ax.set_xlim(min(0.0, float(t[['B1', 'Nature Estimator']].min().min()) - 0.05), 1)   # from the data: 0 unless a task goes negative
+    ax.set_xlabel('Hip moment R² vs Ground Truth')
     ax.grid(axis = 'y', visible = False)
     pooled_b1 = get_r2(df['b1'].to_numpy(), df['truth'].to_numpy())
     pooled_n = get_r2(df['nature'].to_numpy(), df['truth'].to_numpy())
-    ax.legend(loc = 'lower left', fontsize = 8, title = f'pooled: B1 {pooled_b1:.2f}, Nature Est. {pooled_n:.2f}', title_fontsize = 7.5)
+    ax.legend(loc = 'upper left', fontsize = 8, bbox_to_anchor = (1.01, 1.0), title = f'pooled: B1 {pooled_b1:.2f}, Nature Est. {pooled_n:.2f}', title_fontsize = 7.5)
     ax.annotate('* task not in B1\'s training set', (0.0, -0.085), xycoords = 'axes fraction', fontsize = 7.5, color = MUTED)
     ax.set_title('Nature data (Phase 3 test participants): B1 beats the Nature Estimator on most tasks', loc = 'left',
                  fontsize = 9.5, fontweight = 'bold', color = INK)
