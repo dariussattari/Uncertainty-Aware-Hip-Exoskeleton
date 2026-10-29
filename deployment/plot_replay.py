@@ -24,7 +24,8 @@ FIGURES = Path(__file__).resolve().parent / 'docs' / 'figures'
 INK, MUTED, GRID, SURFACE = '#0b0b0b', '#52514e', '#e4e3df', '#fcfcfb'
 SERIES = {'B1 calibrated': '#2a78d6', 'Online trq_est': '#eb6834', 'B1 nominal': '#1baf7a'}   # fixed order
 MODES = ('LG', 'RA', 'RD', 'SA', 'SD')
-MODE_NAMES = {'LG': 'Level\nwalking', 'RA': 'Ramp\nascent', 'RD': 'Ramp\ndescent', 'SA': 'Stair\nascent', 'SD': 'Stair\ndescent'}
+MODE_NAMES = {'LG': 'Level\nwalking', 'RA': 'Ramp\nascent', 'RD': 'Ramp\ndescent', 'SA': 'Stair\nascent', 'SD': 'Stair\ndescent',
+              'ST': 'Standing', 'TR': 'Transitions'}
 plt.rcParams.update({'figure.dpi': 110, 'savefig.dpi': 200, 'font.size': 9, 'axes.edgecolor': MUTED, 'axes.labelcolor': INK,
                      'xtick.color': MUTED, 'ytick.color': MUTED, 'axes.spines.top': False, 'axes.spines.right': False,
                      'figure.facecolor': SURFACE, 'axes.facecolor': SURFACE, 'axes.grid': True, 'grid.color': GRID,
@@ -39,33 +40,36 @@ def save(fig: plt.Figure, name: str) -> None:
 
 def plot_modes(rows: pd.DataFrame, tag: str) -> None:
     """Grouped bars: hip R² per mode, three estimators, common samples."""
-    table = ar.score(rows, ['mode']).set_index('mode').reindex(list(MODES))
+    table = ar.score(rows, ['mode']).set_index('mode')
+    modes = [m for m in (*MODES, 'ST', 'TR') if m in table.index]          # ST and TR only where inverse dynamics exists
+    table = table.reindex(modes)
     columns = {'B1 nominal': 'B1 nominal r2', 'B1 calibrated': 'B1 calibrated r2', 'Online trq_est': 'online trq_est r2'}
-    order = ['B1 nominal', 'B1 calibrated', 'Online trq_est']
-    fig, ax = plt.subplots(figsize = (7.2, 3.4))
-    width = 0.26
+    order = [name for name in ('B1 nominal', 'B1 calibrated', 'Online trq_est') if columns[name] in table]
+    columns = {k: v for k, v in columns.items() if k in order}
+    fig, ax = plt.subplots(figsize = (7.2 if len(modes) <= 5 else 8.4, 3.4))
+    width = 0.78 / len(order)
     for i, name in enumerate(order):
         values = table[columns[name]].to_numpy()
-        x = np.arange(len(MODES)) + (i - 1) * (width + 0.02)
+        x = np.arange(len(modes)) + (i - (len(order) - 1) / 2) * width
         ax.bar(x, values, width, color = SERIES[name], label = name, zorder = 3)
         for xi, v in zip(x, values):
             ax.annotate(f'{v:.2f}', (xi, v), xytext = (0, 2 if v >= 0 else -9), textcoords = 'offset points', ha = 'center',
                         fontsize = 7, color = MUTED)
     ax.axhline(0, color = MUTED, lw = 0.8)
-    ax.set_xticks(range(len(MODES)), [f'{MODE_NAMES[m]}\nn={int(table.loc[m, "n"]):,}' for m in MODES])
+    ax.set_xticks(range(len(modes)), [f'{MODE_NAMES[m]}\nn={int(table.loc[m, "n"]):,}' for m in modes])
     ax.set_ylabel('Hip moment R² (vs inverse dynamics)')
     ax.set_ylim(min(-0.3, np.nanmin(table[list(columns.values())].to_numpy()) - 0.1), 1)
     ax.grid(axis = 'x', visible = False)
     ax.legend(ncol = 3, loc = 'upper right', fontsize = 8)
-    ax.set_title('B1 trails the exo\'s own estimator on every mode; calibration helps most on stairs', loc = 'left', fontsize = 9.5,
-                 color = INK, fontweight = 'bold')
+    title = 'B1 trails the exo\'s own estimator on every mode' + ('; calibration helps most on stairs' if 'B1 nominal' in order else '')
+    ax.set_title(title, loc = 'left', fontsize = 9.5, color = INK, fontweight = 'bold')
     save(fig, f'D03_{tag}_r2_per_mode.png')
 
 
-def plot_traces(subject: str, tag: str, sign: float) -> None:
-    """A few seconds of level walking and stair descent, left leg: ground truth vs the three estimators."""
+def plot_traces(subject: str, tag: str, sign: float, source: str) -> None:
+    """A few seconds of level walking and stair descent, left leg: ground truth vs the estimators."""
     data = np.load(sr.OUT / f'{subject}.npz')
-    pred = np.load(ar.PRED / 'jetson' / f'{subject}.npz')
+    pred = np.load(ar.PRED / source / f'{subject}.npz')
     fig, axes = plt.subplots(1, 2, figsize = (9.6, 3.2), sharey = True)
     for ax, mode in zip(axes, ('LG', 'SD')):
         best = None
@@ -80,10 +84,10 @@ def plot_traces(subject: str, tag: str, sign: float) -> None:
         a = ok[0] + 10 if len(ok) else 300
         span = slice(a, min(a + 4 * sr.nt.RATE_HZ, n))                         # 4 s
         t = np.arange(n)[span] / sr.nt.RATE_HZ
-        b1 = {v: pred[f'pred_{v}'][s:s + n, 0] for v in sr.VARIANTS}
+        b1 = {v: pred[f'pred_{v}'][s:s + n, 0] for v in sr.VARIANTS if f'pred_{v}' in pred.files}
         lagged = np.r_[np.full(ar.LAG, np.nan), moment[:-ar.LAG]]           # B1 at t estimates the moment at t - 10
         ax.plot(t, lagged[span], color = INK, lw = 2.2, label = 'Inverse dynamics (B1 target, t − 50 ms)')
-        for name, y in (('B1 nominal', b1['nominal']), ('B1 calibrated', b1['calibrated'])):
+        for name, y in [(f'B1 {v}', y) for v, y in b1.items()]:
             yy = y[span]
             ax.plot(t[np.isfinite(yy)], yy[np.isfinite(yy)], color = SERIES[name], lw = 1.6, label = name)
         ax.plot(t, sign * data['trq_est'][s:s + n, 0][span], color = SERIES['Online trq_est'], lw = 1.6, label = 'Online trq_est (t)')
@@ -184,18 +188,21 @@ def plot_device(subjects: list[str], tag: str) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description = __doc__.split('\n')[0])
     parser.add_argument('--subjects', default = 'dev', choices = ('dev', 'final', 'all'))
+    parser.add_argument('--source', default = 'jetson', help = 'predictions folder, e.g. jetson, jetson_final')
     args = parser.parse_args()
     FIGURES.mkdir(parents = True, exist_ok = True)
     dev = ar.get_subjects('dev')
     sign = ar.get_sign(pd.concat([ar.get_rows(s, 'reference') for s in dev]))
     subjects = ar.get_subjects(args.subjects)
-    rows = pd.concat([ar.get_rows(s, 'jetson') for s in subjects], ignore_index = True)
+    rows = pd.concat([ar.get_rows(s, args.source) for s in subjects], ignore_index = True)
     rows[['trq_est', 'moment_t', 'moment_lag']] *= sign
     plot_modes(rows, args.subjects)
-    plot_traces(subjects[0], args.subjects, sign)
-    plot_calibration(rows, args.subjects)
+    plot_traces(subjects[0], args.subjects, sign, args.source)
+    if rows['b1_nominal'].notna().any():                                       # needs both variants
+        plot_calibration(rows, args.subjects)
     plot_lag(dev, sign, args.subjects)
-    plot_device(subjects, args.subjects)
+    if all((ar.PRED / 'reference' / f'{s}.npz').exists() for s in subjects):    # needs the PyTorch reference
+        plot_device(subjects, args.subjects)
 
 
 if __name__ == '__main__':

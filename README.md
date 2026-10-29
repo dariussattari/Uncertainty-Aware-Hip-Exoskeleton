@@ -506,6 +506,7 @@ deployment/
   soak_test.py          on the Jetson: hours of streaming at true 100 Hz pacing, per-tick timing and memory
   latency_budget.py     on the Jetson: per-window latency of every controller component (stand-in weights)
   analyze_device.py     D04's numbers and figures from the battery's outputs (soak stalls by cause, jitter, fp16, budget, thermals)
+  encoder_engine_test.py  on the Jetson: VAE encoders as TensorRT engines vs PyTorch, stand-in weights (D05)
   sync_exo_code.sh      commits exo-code edits made on the Jetson and syncs them with ../HipExoGPUCode (branch uncertainty-aware-hip-exo)
 data/
   science-robotics/     supplementary figure data (MATLAB tables) — in git

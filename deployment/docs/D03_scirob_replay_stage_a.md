@@ -5,7 +5,7 @@
 | ID | D03 |
 | Date | 2026-10-27 |
 | Dataset | Science Robotics 2024 (Molinaro): AB15–AB34, custom hip exo, 1505 trials, 6.3 h, modes LG, RA, RD, SA, SD, ST, TR. None in B1's training data |
-| Status | **Dev complete** (4 participants, 2026-10-27). Final 16: predictions produced **sealed** on the Jetson overnight 2026-10-27 (D04's T1: calibrated variant, `predictions/jetson_final/`); not analyzed |
+| Status | Complete. Dev 2026-10-27; final 16 predicted sealed on the Jetson overnight 2026-10-27 (D04's T1, calibrated) and scored once 2026-10-29 |
 | Sources | D02 (the B1 engine), E41 (B1), E01 (Sci-Rob audit, axis conventions) |
 | Code / notebooks | `deployment/scirob_replay.py` (converter, Mac), `replay_reference.py` (PyTorch reference, Mac), `replay_runner.py` (streaming replay, Jetson), `analyze_replay.py`, `plot_replay.py` (figures in `docs/figures/D03_*`); streams and predictions in `data/replay/scirob/` (gitignored) |
 
@@ -107,6 +107,34 @@ B1 would gain roughly 0.02 in r; the fixed rule (lag 10) is kept for every numbe
   every mode (pooled 0.707 vs 0.838), and fails on stair descent. The online estimator was built for this exo and these
   tasks; B1 has never seen this device, its sensor mounting, or Sci-Rob's moment timing.
 
+### Final participants (scored once, 2026-10-29)
+
+The other 16 participants, calibrated variant only (chosen on dev), predicted on the Jetson by D04's T1 and analyzed once
+with the dev-derived sign and the fixed lag-10 rule. 2,666,586 leg-samples where B1, `trq_est` and the moment all exist.
+
+| | n | B1 calibrated | Online `trq_est` |
+|---|---|---|---|
+| Pooled | 2,666,586 | **0.698** (0.227) | **0.843** (0.164) |
+| Left / right leg | | 0.740 / 0.656 | 0.860 / 0.826 |
+| LG | 1,018,545 | 0.761 (0.216) | 0.864 (0.162) |
+| RA | 681,081 | 0.700 (0.261) | 0.872 (0.170) |
+| RD | 527,902 | 0.620 (0.207) | 0.759 (0.164) |
+| SA | 163,039 | 0.372 (0.237) | 0.697 (0.163) |
+| SD | 149,075 | 0.006 (0.243) | 0.531 (0.168) |
+| ST | 29,760 | −0.944 (0.125) | 0.247 (0.078) |
+| TR | 97,184 | 0.535 (0.171) | 0.717 (0.133) |
+| Per participant, range | | 0.551–0.804 | 0.729–0.938 |
+
+![Hip R² per mode, final participants](figures/D03_final_r2_per_mode.png)
+
+![Example traces, final participant AB16](figures/D03_final_example_traces.png)
+
+- **The final participants reproduce dev:** pooled B1 0.698 against dev's 0.707, the online estimator 0.843 against
+  0.838. B1 is below the online estimator for all 16 people, and for every mode.
+- Standing (ST) has little moment variance, so R² is unstable there; its RMSE is the small one (0.125 N·m/kg), still
+  above the online estimator's 0.078.
+- The right leg is now the weaker one (0.656 vs left 0.740; dev 0.696 vs 0.716).
+
 ## Conclusion
 
 - **The engine path is verified end to end on the device:** a converter from this lab's exo data, streaming at the
@@ -117,6 +145,6 @@ B1 would gain roughly 0.02 in r; the fixed rule (lag 10) is kept for every numbe
   most on stairs. Candidate causes, testable next: the moment-timing offset (about 0.02 r), stair loading the thigh
   cannot see (E41's unseen-task finding), and the accelerometer scale errors on AB28 and AB29.
 - **For the real-time loop:** run with real-time priority or isolate the core; 3 in 800,000 steps missed a tick here.
-- **Final 16:** their calibrated predictions exist (sealed, produced by D04's T1) and stay unanalyzed until B1's
-  deployed form is decided. Post-processing changes (output filter, scoring lag) can be applied to them; retraining B1
-  cannot.
+- **Held out, the result stands:** on 16 new people B1 reaches R² 0.70 on this exo against the device's own estimator's
+  0.84; the gap is largest on stairs and standing. These 16 have now been used once; later B1 variants need new held-out
+  data (or the dev participants, already spent on decisions, for development).
