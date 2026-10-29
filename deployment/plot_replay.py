@@ -22,7 +22,7 @@ import scirob_replay as sr  # noqa: E402
 
 FIGURES = Path(__file__).resolve().parent / 'docs' / 'figures'
 INK, MUTED, GRID, SURFACE = '#0b0b0b', '#52514e', '#e4e3df', '#fcfcfb'
-SERIES = {'B1 calibrated': '#2a78d6', 'Online trq_est': '#eb6834', 'B1 nominal': '#1baf7a'}   # fixed order
+SERIES = {'B1 calibrated': '#2a78d6', 'Sci Robotics Estimator': '#eb6834', 'B1 nominal': '#1baf7a'}   # fixed order
 MODES = ('LG', 'RA', 'RD', 'SA', 'SD')
 MODE_NAMES = {'LG': 'Level\nwalking', 'RA': 'Ramp\nascent', 'RD': 'Ramp\ndescent', 'SA': 'Stair\nascent', 'SD': 'Stair\ndescent',
               'ST': 'Standing', 'TR': 'Transitions'}
@@ -43,8 +43,8 @@ def plot_modes(rows: pd.DataFrame, tag: str) -> None:
     table = ar.score(rows, ['mode']).set_index('mode')
     modes = [m for m in (*MODES, 'ST', 'TR') if m in table.index]          # ST and TR only where inverse dynamics exists
     table = table.reindex(modes)
-    columns = {'B1 nominal': 'B1 nominal r2', 'B1 calibrated': 'B1 calibrated r2', 'Online trq_est': 'online trq_est r2'}
-    order = [name for name in ('B1 nominal', 'B1 calibrated', 'Online trq_est') if columns[name] in table]
+    columns = {'B1 nominal': 'B1 nominal r2', 'B1 calibrated': 'B1 calibrated r2', 'Sci Robotics Estimator': 'Sci Robotics Estimator r2'}
+    order = [name for name in ('B1 nominal', 'B1 calibrated', 'Sci Robotics Estimator') if columns[name] in table]
     columns = {k: v for k, v in columns.items() if k in order}
     fig, ax = plt.subplots(figsize = (7.2 if len(modes) <= 5 else 8.4, 3.4))
     width = 0.78 / len(order)
@@ -57,11 +57,11 @@ def plot_modes(rows: pd.DataFrame, tag: str) -> None:
                         fontsize = 7, color = MUTED)
     ax.axhline(0, color = MUTED, lw = 0.8)
     ax.set_xticks(range(len(modes)), [f'{MODE_NAMES[m]}\nn={int(table.loc[m, "n"]):,}' for m in modes])
-    ax.set_ylabel('Hip moment R² (vs inverse dynamics)')
+    ax.set_ylabel('Hip moment R² vs Ground Truth')
     ax.set_ylim(min(-0.3, np.nanmin(table[list(columns.values())].to_numpy()) - 0.1), 1)
     ax.grid(axis = 'x', visible = False)
     ax.legend(ncol = 3, loc = 'upper right', fontsize = 8)
-    title = 'B1 trails the exo\'s own estimator on every mode' + ('; calibration helps most on stairs' if 'B1 nominal' in order else '')
+    title = 'B1 trails the Sci Robotics Estimator on every mode' + ('; calibration helps most on stairs' if 'B1 nominal' in order else '')
     ax.set_title(title, loc = 'left', fontsize = 9.5, color = INK, fontweight = 'bold')
     save(fig, f'D03_{tag}_r2_per_mode.png')
 
@@ -86,11 +86,11 @@ def plot_traces(subject: str, tag: str, sign: float, source: str) -> None:
         t = np.arange(n)[span] / sr.nt.RATE_HZ
         b1 = {v: pred[f'pred_{v}'][s:s + n, 0] for v in sr.VARIANTS if f'pred_{v}' in pred.files}
         lagged = np.r_[np.full(ar.LAG, np.nan), moment[:-ar.LAG]]           # B1 at t estimates the moment at t - 10
-        ax.plot(t, lagged[span], color = INK, lw = 2.2, label = 'Inverse dynamics (B1 target, t − 50 ms)')
+        ax.plot(t, lagged[span], color = INK, lw = 2.2, label = 'Ground Truth (inverse dynamics), t − 50 ms')
         for name, y in [(f'B1 {v}', y) for v, y in b1.items()]:
             yy = y[span]
             ax.plot(t[np.isfinite(yy)], yy[np.isfinite(yy)], color = SERIES[name], lw = 1.6, label = name)
-        ax.plot(t, sign * data['trq_est'][s:s + n, 0][span], color = SERIES['Online trq_est'], lw = 1.6, label = 'Online trq_est (t)')
+        ax.plot(t, sign * data['trq_est'][s:s + n, 0][span], color = SERIES['Sci Robotics Estimator'], lw = 1.6, label = 'Sci Robotics Estimator (t)')
         ax.set_title(f'{MODE_NAMES[mode].replace(chr(10), " ")}, {subject} left leg\n{data["trial"][k]}', loc = 'left',
                      fontsize = 8.5, color = INK)
         ax.set_xlabel('Time in trial (s)')
@@ -134,15 +134,15 @@ def plot_lag(subjects: list[str], sign: float, tag: str) -> None:
     scan = ar.get_lag_scan(subjects, sign)
     ms = scan['lag_samples'] * 1000 / sr.nt.RATE_HZ
     fig, ax = plt.subplots(figsize = (6.4, 3.2))
-    for name, col in (('B1 calibrated', 'B1 calibrated'), ('Online trq_est', 'online trq_est')):
+    for name, col in (('B1 calibrated', 'B1 calibrated'), ('Sci Robotics Estimator', 'Sci Robotics Estimator')):
         i = int(scan[col].idxmax())
         ax.plot(ms, scan[col], color = SERIES[name], lw = 2, marker = 'o', ms = 5, mec = SURFACE, mew = 1.5,
                 label = f'{name} (peak r {scan[col][i]:.3f} at {ms[i]:.0f} ms)')
     ax.axvline(ar.LAG * 1000 / sr.nt.RATE_HZ, color = MUTED, lw = 1, ls = '--')
     ax.annotate('B1 trained to estimate\n50 ms behind (scoring rule)', (ar.LAG * 1000 / sr.nt.RATE_HZ, 0.55), xytext = (5, 0),
                 textcoords = 'offset points', fontsize = 7.5, color = MUTED)
-    ax.set_xlabel('Lag: prediction at t vs moment at t − lag (ms)')
-    ax.set_ylabel('Correlation r with inverse dynamics')
+    ax.set_xlabel('Lag: prediction at t vs Ground Truth at t − lag (ms)')
+    ax.set_ylabel('Correlation r with Ground Truth')
     ax.legend(loc = 'lower left', fontsize = 7.5, bbox_to_anchor = (0.1, 0.0))
     ax.set_title('On Sci-Rob, B1 lines up best at 0–25 ms, not the 50 ms it was trained for', loc = 'left', fontsize = 9.5,
                  fontweight = 'bold', color = INK)
@@ -171,7 +171,7 @@ def plot_device(subjects: list[str], tag: str) -> None:
     ax1.set_ylabel('Steps (log)')
     ax1.set_title('Latency per 100 Hz step, two legs', loc = 'left', fontsize = 9, color = INK)
     bins = np.logspace(-9, -2, 71)
-    ax2.hist(np.clip(diffs, 1e-9, None), bins = bins, color = SERIES['Online trq_est'], zorder = 3)
+    ax2.hist(np.clip(diffs, 1e-9, None), bins = bins, color = SERIES['Sci Robotics Estimator'], zorder = 3)
     ax2.set_xscale('log')
     ax2.axvline(5e-3, color = INK, lw = 1.2, ls = '--')
     ax2.annotate('tolerance 5e-3', (5e-3, ax2.get_ylim()[1] * 0.8), xytext = (-4, 0), textcoords = 'offset points', ha = 'right',

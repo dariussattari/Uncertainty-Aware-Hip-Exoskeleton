@@ -502,6 +502,7 @@ deployment/
   replay_runner.py      on the Jetson: streams the replay sample by sample through the engine, timed
   analyze_replay.py     scores B1 vs inverse dynamics vs the exo's online estimator; Jetson vs reference
   plot_replay.py        D03's figures (accuracy per mode, traces, calibration, lag scan, device) -> docs/figures/
+  plot_nature.py        D02's figures: B1 vs the Nature Estimator vs Ground Truth per task and as traces (Nature test data)
   overnight.sh          unattended device-test battery on the Jetson (D04), then auto shutdown; SMOKE=1 for a quick pass
   soak_test.py          on the Jetson: hours of streaming at true 100 Hz pacing, per-tick timing and memory
   latency_budget.py     on the Jetson: per-window latency of every controller component (stand-in weights)

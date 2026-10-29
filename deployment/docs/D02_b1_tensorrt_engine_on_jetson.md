@@ -28,7 +28,7 @@
   then with B1.
 - **Real-data check (`export_check_windows.py` → `check_moment_real.py`):** 2048 validation windows with a defined hip
   target, sampled with seed 0 (test participants untouched), raw inputs built exactly as `train_moment.get_batch`, with
-  the cluster's saved predictions (bf16 autocast) and the Nature study's own deployed estimator for the same windows
+  the cluster's saved predictions (bf16 autocast) and the Nature Estimator (the study's estimator as recorded during collection, provided in the dataset) for the same windows
   (hip sign flipped to OpenSim flexion-positive and Phase 3 only, as `score_moment.py` does). Fails unless the engine
   matches PyTorch fp32 on the Jetson (5e-3 N·m/kg) and the run's R² (0.005).
 
@@ -43,14 +43,25 @@
 | Real windows: engine vs PyTorch fp32 on the Jetson, max | 7.6e-5 N·m/kg |
 | Real windows: engine vs the cluster's predictions (bf16), RMS / max | 0.0013 / 0.0078 N·m/kg |
 | Real windows: hip R², engine / cluster / PyTorch fp32 | 0.7530 / 0.7529 / 0.7530 (all 26 tasks; 0.807 is the paper-task subset) |
-| Phase 3 windows (738): hip R², engine / the study's deployed estimator | 0.725 / 0.671 (RMSE 0.193 / 0.211) |
+| Phase 3 windows (738): hip R², engine / the Nature Estimator | 0.725 / 0.671 (RMSE 0.193 / 0.211) |
 
 - **(a), (b), (c) hold.** The engine is the trained model to within bf16-vs-fp32 rounding, and a call takes a fifth of
   the loop's budget.
-- The first comparison against the study's deployed estimator gave R² −3.1: its hip channel is extension-positive and it
+- The first comparison against the Nature Estimator gave R² −3.1: its hip channel is extension-positive and it
   only exists for Phase 3. With `score_moment.py`'s handling the comparison agrees with E41 (B1 ahead).
 - Side finding: the lab's bundled engine (`HipExoGPUCode/online_deployed/model/current_best_tcn_new.trt`) does not load on
   this Jetson (built by an older TensorRT); it must be rebuilt here from its ONNX.
+
+**B1 vs the Nature Estimator vs Ground Truth, all tasks** (`deployment/plot_nature.py`). B1's saved test predictions
+(the engine reproduces them, above) on the Phase 3 test participants BT19 and BT22, the only ones with the Nature
+Estimator; 242,366 windows, 26 tasks. These participants were scored in E41; here windows are pooled per task (E41
+averages per participant first, hence its lower 0.698 vs 0.596). Pooled R²: **B1 0.81, Nature Estimator 0.72**. B1 is
+ahead on 20 of 26 tasks; the Nature Estimator is ahead on squats, lunges, step-ups, ball toss, poses and tug of war,
+mostly tasks B1 never saw in training and where the foot carries the load (E41).
+
+![Hip R² per task, B1 vs the Nature Estimator, Phase 3 test participants](figures/D02_nature_r2_per_task.png)
+
+![Example traces on the Nature data: B1, the Nature Estimator and Ground Truth](figures/D02_nature_example_traces.png)
 
 ## Conclusion
 

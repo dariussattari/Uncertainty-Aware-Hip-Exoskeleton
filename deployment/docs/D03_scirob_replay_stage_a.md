@@ -1,4 +1,4 @@
-# D03: Stage A replay: B1 streamed on the Jetson over Sci-Rob exo recordings, against inverse dynamics and the exo's online estimator
+# D03: Stage A replay: B1 streamed on the Jetson over Sci-Rob exo recordings, against Ground Truth and the Sci Robotics Estimator
 
 | Field | Value |
 |---|---|
@@ -8,6 +8,12 @@
 | Status | Complete. Dev 2026-10-27; final 16 predicted sealed on the Jetson overnight 2026-10-27 (D04's T1, calibrated) and scored once 2026-10-29 |
 | Sources | D02 (the B1 engine), E41 (B1), E01 (Sci-Rob audit, axis conventions) |
 | Code / notebooks | `deployment/scirob_replay.py` (converter, Mac), `replay_reference.py` (PyTorch reference, Mac), `replay_runner.py` (streaming replay, Jetson), `analyze_replay.py`, `plot_replay.py` (figures in `docs/figures/D03_*`); streams and predictions in `data/replay/scirob/` (gitignored) |
+
+**Names.** *B1*: this project's estimator (E41). *Sci Robotics Estimator*: the hip moment the Science Robotics
+study's estimator produced live on the exo during collection, provided in the dataset (`exo.csv`, `trq_est_l/r`);
+numbers only, the model itself is not available. *Ground Truth*: inverse dynamics from motion capture and force plates,
+provided in the dataset (`moment.csv`), NaN off the force plates. *Lab Model*: the lab's TCN in `HipExoGPUCode`, not run
+here.
 
 ## Hypothesis
 
@@ -19,8 +25,8 @@ Stated before any result was seen.
 - **(c)** Per-person IMU calibration (the E41 deployment design) beats the bare axis map, mostly on the left leg, whose
   IMU sits rolled 23–36°, beyond B1's 15° training randomization.
 - **(d)** On a new device and new people, B1 loses accuracy against its Nature test level (Phase 3 hip R² 0.70) but stays
-  usable. The online estimator, built for this exo and recorded running on it, is the stronger reference on these
-  cyclic tasks.
+  usable. The Sci Robotics Estimator, built for this exo and recorded running on it, is the stronger reference on
+  these cyclic tasks.
 
 ## Method
 
@@ -47,17 +53,17 @@ Stated before any result was seen.
   - Jetson: one sample at a time into a ring buffer per leg, one engine call per tick, timed (engine only, and the full
     step).
 - **Scoring (`analyze_replay.py`):**
-  - B1's prediction at *t* against the inverse-dynamics hip moment at *t* − 10 (it estimates 50 ms behind); the online
-    estimate `trq_est` at *t*.
-  - All three compared on the same samples: where B1, `trq_est` and the moment all exist (the moment only exists on the
+  - B1's prediction at *t* against Ground Truth at *t* − 10 (it estimates 50 ms behind); the Sci
+    Robotics Estimator at *t*.
+  - All three compared on the same samples: where B1, the Sci Robotics Estimator and Ground Truth all exist (Ground Truth only exists on the
     force plates).
   - Sci-Rob's moment sign relative to B1, from dev only: the sign that makes B1's correlation with the moment positive.
   - R², RMSE, r pooled, per mode, per participant, per leg; Jetson vs reference difference; step latency.
 
 ## Result
 
-Dev participants (AB15, AB19, AB25, AB29), 583,018 leg-samples where B1, the online estimate and the moment all exist.
-Moment sign from dev: Sci-Rob's moment and `trq_est` are opposite to B1's (OpenSim) convention, r about −0.86; flipped.
+Dev participants (AB15, AB19, AB25, AB29), 583,018 leg-samples where B1, the Sci Robotics Estimator and Ground Truth all exist.
+Moment sign from dev: Sci-Rob's Ground Truth and the Sci Robotics Estimator are opposite to B1's (OpenSim) convention, r about −0.86; flipped.
 
 **Jetson vs reference.** 1,599,564 predictions over both variants, on exactly the same samples (asserted): max
 difference 1.6e-3 N·m/kg, 99.9th percentile 3.4e-4.
@@ -70,9 +76,9 @@ priority. Throughput 2.2× real time.
 
 **Accuracy, hip R² (RMSE N·m/kg):**
 
-![Hip R² per mode for B1 nominal, B1 calibrated and the online estimator](figures/D03_dev_r2_per_mode.png)
+![Hip R² per mode for B1 nominal, B1 calibrated and the Sci Robotics Estimator](figures/D03_dev_r2_per_mode.png)
 
-| | n | B1 nominal | B1 calibrated | Online `trq_est` |
+| | n | B1 nominal | B1 calibrated | Sci Robotics Estimator |
 |---|---|---|---|---|
 | Pooled | 583,018 | 0.679 (0.229) | 0.707 (0.219) | **0.838 (0.163)** |
 | Left leg | 295,995 | 0.657 | 0.716 | 0.827 |
@@ -91,11 +97,11 @@ ST and TR have no samples with inverse dynamics.
 ![B1 R² per participant and leg, nominal vs calibrated](figures/D03_dev_calibration.png)
 
 **Timing alignment (diagnostic).** Correlation of each prediction at *t* with the moment at *t* − lag: B1 peaks at lag
-0–5 samples (r 0.859–0.863) rather than the 10 it was trained for (0.840); `trq_est` peaks at 0 (0.919). Sci-Rob's
+0–5 samples (r 0.859–0.863) rather than the 10 it was trained for (0.840); the Sci Robotics Estimator peaks at 0 (0.919). Sci-Rob's
 inverse-dynamics moment appears to sit about 25–50 ms later relative to the sensors than Nature's. Scored at its best lag,
 B1 would gain roughly 0.02 in r; the fixed rule (lag 10) is kept for every number above.
 
-![Correlation with the moment against lag, B1 and the online estimator](figures/D03_dev_lag_scan.png)
+![Correlation with Ground Truth against lag, B1 and the Sci Robotics Estimator](figures/D03_dev_lag_scan.png)
 
 - **(a) holds.** The streaming replay on the Jetson is the reference to 1.6e-3 N·m/kg (TF32 rounding over 1.6 M
   predictions); no sample was predicted on one side and not the other.
@@ -103,16 +109,16 @@ B1 would gain roughly 0.02 in r; the fixed rule (lag 10) is kept for every numbe
   operating-system or garbage-collector pauses in an unprioritized Python process.
 - **(c) holds.** Calibration adds 0.059 R² on the left leg (rolled 23–36°) and nothing on the right (−0.006); pooled
   +0.028, better on 3 of 4 people (AB19 −0.010). It helps most on stairs (SA +0.13, SD +0.17).
-- **(d) holds.** B1 is usable on level and inclined walking (calibrated 0.69–0.79) but behind the online estimator on
-  every mode (pooled 0.707 vs 0.838), and fails on stair descent. The online estimator was built for this exo and these
+- **(d) holds.** B1 is usable on level and inclined walking (calibrated 0.69–0.79) but behind the Sci Robotics Estimator on
+  every mode (pooled 0.707 vs 0.838), and fails on stair descent. The Sci Robotics Estimator was built for this exo and these
   tasks; B1 has never seen this device, its sensor mounting, or Sci-Rob's moment timing.
 
 ### Final participants (scored once, 2026-10-29)
 
 The other 16 participants, calibrated variant only (chosen on dev), predicted on the Jetson by D04's T1 and analyzed once
-with the dev-derived sign and the fixed lag-10 rule. 2,666,586 leg-samples where B1, `trq_est` and the moment all exist.
+with the dev-derived sign and the fixed lag-10 rule. 2,666,586 leg-samples where B1, the Sci Robotics Estimator and Ground Truth all exist.
 
-| | n | B1 calibrated | Online `trq_est` |
+| | n | B1 calibrated | Sci Robotics Estimator |
 |---|---|---|---|
 | Pooled | 2,666,586 | **0.698** (0.227) | **0.843** (0.164) |
 | Left / right leg | | 0.740 / 0.656 | 0.860 / 0.826 |
@@ -129,10 +135,10 @@ with the dev-derived sign and the fixed lag-10 rule. 2,666,586 leg-samples where
 
 ![Example traces, final participant AB16](figures/D03_final_example_traces.png)
 
-- **The final participants reproduce dev:** pooled B1 0.698 against dev's 0.707, the online estimator 0.843 against
-  0.838. B1 is below the online estimator for all 16 people, and for every mode.
+- **The final participants reproduce dev:** pooled B1 0.698 against dev's 0.707, the Sci Robotics Estimator 0.843 against
+  0.838. B1 is below the Sci Robotics Estimator for all 16 people, and for every mode.
 - Standing (ST) has little moment variance, so R² is unstable there; its RMSE is the small one (0.125 N·m/kg), still
-  above the online estimator's 0.078.
+  above the Sci Robotics Estimator's 0.078.
 - The right leg is now the weaker one (0.656 vs left 0.740; dev 0.696 vs 0.716).
 
 ## Conclusion

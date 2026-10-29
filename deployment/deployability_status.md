@@ -27,7 +27,7 @@ with the *u* cutoffs set on validation.
 | Python | venv `~/venvs/hipexo` (Python 3.10, `--system-site-packages` so the system TensorRT imports). Activate: `. ~/venvs/hipexo/bin/activate` |
 | GPU stack | CUDA 12.6, cuDNN 9.3, TensorRT 10.3 (system), torch 2.8.0 (NVIDIA's Jetson build, `pypi.jetson-ai-lab.io/jp6/cu126`), pycuda 2024.1 (built on the board) |
 | Pinned packages | The lab's `new_env` versions: numpy 1.26.4, scipy 1.14.0, pandas 2.2.2, scikit-learn 1.5.1, python-can 4.4.2, pyyaml 6.0.1, matplotlib 3.9.1; plus onnx 1.17.0 |
-| Lab code | `~/HipExoGPUCode`, branch `dev/lucien` (git clone of a bundle, origin set to GitHub). Its modules import; its `online_deployed/model/current_best_tcn_new.trt` does **not** load (built by an older TensorRT): rebuild it here from the lab's ONNX before running `main.py` |
+| Lab code | `~/HipExoGPUCode`, branch `uncertainty-aware-hip-exo` (the lab's `dev/lucien` plus your commits) (git clone of a bundle, origin set to GitHub). Its modules import; its `online_deployed/model/current_best_tcn_new.trt` does **not** load (built by an older TensorRT): rebuild it here from the lab's ONNX before running `main.py` |
 | This repo | `~/hip-exo` (filled by `bundle.sh` or `send_moment.sh`; code only so far) |
 | No internet | Wheels are downloaded on the Mac (`pip download --platform manylinux2014_aarch64 --python-version 3.10 ...`) and installed with `pip install --no-index --find-links ~/wheels`; the cached wheels are in `~/wheels` |
 | Clock | Not synced (no internet): it reads 1969. Set it once per boot until it has internet: `ssh -t jetson "sudo date -s '$(date -u +%Y-%m-%dT%H:%M:%SZ)'"` |
@@ -75,7 +75,7 @@ on them on the Jetson, failing unless it matches PyTorch fp32 there and reproduc
 | engine vs PyTorch fp32 on the Jetson, max abs | 7.6e-5 N m/kg |
 | engine vs the cluster's saved predictions (bf16), RMS / max | 0.0013 / 0.0078 N m/kg |
 | hip R², engine / cluster | 0.7530 / 0.7529 (all 26 tasks; 0.807 is the paper-task subset the run summary reports) |
-| Phase 3 windows (738), hip R²: engine / the study's deployed estimator | 0.725 / 0.671 |
+| Phase 3 windows (738), hip R²: engine / the Nature Estimator | 0.725 / 0.671 |
 
 The live inputs still have to be produced in the Nature conventions the engine expects: hip angle (deg) and its causal
 derivative (`features.get_causal_velocity`, deg/s), thigh IMU accel (m/s²) and gyro (deg/s) rotated into the Nature thigh

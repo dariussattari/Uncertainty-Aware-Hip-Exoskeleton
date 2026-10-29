@@ -1,4 +1,5 @@
-"""Score the Sci-Rob replay (stage A): B1 vs inverse dynamics vs the estimator that ran on the exo.
+"""Score the Sci-Rob replay (stage A): B1 and the Sci Robotics Estimator (the dataset's ``trq_est``, the estimator
+that ran on the exo during collection) against Ground Truth (inverse dynamics, the dataset's ``moment``).
 
     .venv/bin/python deployment/analyze_replay.py [--source jetson|reference] [--subjects dev|final|all]
 
@@ -76,7 +77,7 @@ def score(rows: pd.DataFrame, by: list[str]) -> pd.DataFrame:
     out = []
     for key, g in rows[common].groupby(by):
         entry = dict(zip(by, key if isinstance(key, tuple) else (key,)), n = len(g))
-        for name, pred, target in [(f'B1 {c[3:]}', c, 'moment_lag') for c in b1] + [('online trq_est', 'trq_est', 'moment_t')]:
+        for name, pred, target in [(f'B1 {c[3:]}', c, 'moment_lag') for c in b1] + [('Sci Robotics Estimator', 'trq_est', 'moment_t')]:
             entry.update({f'{name} {k}': v for k, v in get_metrics(g[pred].to_numpy(), g[target].to_numpy()).items()})
         out.append(entry)
     return pd.DataFrame(out)
@@ -88,7 +89,7 @@ def get_lag_scan(subject_files: list[str], sign: float) -> pd.DataFrame:
     result = []
     for lag in range(-30, 31, 5):
         rs = {'lag_samples': lag}
-        for name, col in (('B1 calibrated', 'pred_calibrated'), ('online trq_est', None)):
+        for name, col in (('B1 calibrated', 'pred_calibrated'), ('Sci Robotics Estimator', None)):
             preds, targets = [], []
             for subject in subject_files:
                 data = np.load(sr.OUT / f'{subject}.npz')
