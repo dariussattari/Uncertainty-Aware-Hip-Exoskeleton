@@ -57,3 +57,10 @@ Cutoffs per seed, 1.9.0 → 1.7.2: 0.20/0.84 → 0.18/0.84, 0.23/0.855 → 0.245
   the device to a scikit-learn version. A 1.7.2 refit would have been usable but is a different, unvalidated model.
 - LOF is the only costly part on the device: a further reason to test the classifier without it (deployment plan
   step 4).
+
+## Next steps
+
+- Test the classifier without LOF (deployment plan step 4): novelty scoring, almost all of it the LOF search, is 5.6 of
+  the awareness layer's ~11.7 ms per window (D04, D05) and added only 0.013 ± 0.023 F1 (E38).
+- Rerun `export_awareness.py` after any change to the labels, inputs or classifier (plan steps 3 and 4); its checks fail by
+  design when the fit no longer reproduces notebook 13, and need updating with it.

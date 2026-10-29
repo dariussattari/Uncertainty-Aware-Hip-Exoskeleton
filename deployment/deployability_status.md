@@ -1,17 +1,18 @@
-# Deployability status (Nature data, as of 2026-10-27)
+# Deployability status (as of 2026-10-29)
 
-Deployment experiments (D01, D02, ...) are logged in [`docs/EXPERIMENTS.md`](docs/EXPERIMENTS.md).
+Deployment experiments (D01–D05) are logged in [`docs/EXPERIMENTS.md`](docs/EXPERIMENTS.md), with a summary of where
+things stand and the consolidated next steps.
 
 Split: 14 train / 4 validation / 4 test participants. The test participants are held out from every fit.
 
 | Component | Fitted on | Saved? |
 |---|---|---|
-| LSTM-VAE (novelty encoder, 3 s raw, β 1; E31) | 14 train, 3 seeds | Yes, checkpoints in `notebooks/nature/model_exploration/runs/vae/` |
-| TCN-VAE (regime latent, ID + OOD-safe, 3 s + spectral, β 128; E33) | 14 train, 3 seeds | Yes, checkpoints in `notebooks/nature/model_exploration/runs_train_class/` |
+| LSTM-VAE (novelty encoder, 3 s raw, β 1; E31) | 14 train, 3 seeds | Yes, checkpoints in `notebooks/nature/model_exploration/runs/vae/`. On the device: keep in PyTorch (3.4 ms; TensorRT is 4× slower, D05) |
+| TCN-VAE (regime latent, ID + OOD-safe, 3 s + spectral, β 128; E33) | 14 train, 3 seeds | Yes, checkpoints in `notebooks/nature/model_exploration/runs_train_class/`. On the device: convert to TensorRT (10.5 → 2.1 ms, D05); not yet done with the trained weights |
 | LOF / Mahalanobis / posterior variance on the LSTM-VAE latent | 15,000-window sample of train | Yes, `deployment/artifacts/awareness_s{0,1,2}.npz` (`deployment/export_awareness.py`), as plain arrays |
 | Boosted-tree regime classifier (HistGradientBoosting; E34, E39) | 14 train (E39). E34's original fit used the 4 validation participants | Yes, the 14-train fit, in the same `awareness_s*.npz` as tree arrays; reproduces notebook 13's test scores exactly |
 | *u* cutoffs (0.21 / 0.85; E35, E39) | 4 validation | Yes, in the same `awareness_s*.npz` (per seed: 0.20 / 0.84, 0.23 / 0.855, 0.19 / 0.855) |
-| Joint-moment estimator, OOD-safe controller: **B1** (hip encoder + thigh IMU, trained across IMU rotation and lever-arm perturbations; E41) | 14 train, 3 seeds | Yes, checkpoints in `ml/nature/estimator/runs/hip_thigh_aug_s{0,1,2}/` (Model A reference: `paper_s*`, E40). `hip_thigh_aug_s2` is on the Jetson as a TensorRT engine, checked on real validation windows |
+| Joint-moment estimator, OOD-safe controller: **B1** (hip encoder + thigh IMU, trained across IMU rotation and lever-arm perturbations; E41) | 14 train, 3 seeds | Yes, checkpoints in `ml/nature/estimator/runs/hip_thigh_aug_s{0,1,2}/` (Model A reference: `paper_s*`, E40). `hip_thigh_aug_s2` is on the Jetson as a TensorRT engine, checked on real validation windows (D02). Cross-device: R² 0.70 on this lab's exo data vs the Sci Robotics Estimator's 0.84 (D03) |
 | Per-person IMU orientation calibration (gravity while standing + sagittal axis from gyro against hip encoder velocity; E41 design) | No fit; computed per wearer | Simulated only (E41 moved-fit test); no implementation for the device yet |
 | Hip-angle forecaster (reliability signal) | Not trained on Nature | No |
 
@@ -30,9 +31,11 @@ with the *u* cutoffs set on validation.
 | Lab code | `~/HipExoGPUCode`, branch `uncertainty-aware-hip-exo` (the lab's `dev/lucien` plus your commits) (git clone of a bundle, origin set to GitHub). Its modules import; its `online_deployed/model/current_best_tcn_new.trt` does **not** load (built by an older TensorRT): rebuild it here from the lab's ONNX before running `main.py` |
 | This repo | `~/hip-exo` (filled by `bundle.sh` or `send_moment.sh`; code only so far) |
 | No internet | Wheels are downloaded on the Mac (`pip download --platform manylinux2014_aarch64 --python-version 3.10 ...`) and installed with `pip install --no-index --find-links ~/wheels`; the cached wheels are in `~/wheels` |
-| Clock | Not synced (no internet): it reads 1969. Set it once per boot until it has internet: `ssh -t jetson "sudo date -s '$(date -u +%Y-%m-%dT%H:%M:%SZ)'"` |
+| Clock | Not synced (no internet): it reads 1969 after every boot. Set it until it has internet: `ssh -t jetson "sudo date -s '$(date -u +%Y-%m-%dT%H:%M:%SZ)'"` |
+| CAN | `can0` is up at 1 Mbit/s but with **sample point 0.740**; the lab's STM32 needs **0.857** (`online_deployed/README.md`), or the Jetson corrupts frames when it transmits. Fix before the real bus: `sudo ip link set can0 down && sudo ip link set can0 up type can bitrate 1000000 sample-point 0.857 berr-reporting on` |
+| Shutdown rule | `/etc/sudoers.d/uncertainty-aware-shutdown` lets `uncertainty_aware` run only `/usr/sbin/shutdown` without a password (used by `overnight.sh`). Remove with `sudo rm` on that file. After a shutdown, replug the barrel jack to boot |
 
-`can0` is already up on the board. Nothing here installs services or touches CAN.
+Nothing here installs services or touches CAN.
 
 **Editing the exo code.** `~/HipExoGPUCode` on the Jetson and `../HipExoGPUCode` on the Mac are both on branch
 `uncertainty-aware-hip-exo` (the lab's `dev/lucien` plus your commits), linked by git over SSH: the Mac repo has a
@@ -63,7 +66,8 @@ out), exports ONNX (static batch 2: left, right leg), builds the engine with `tr
 PyTorch on the GPU (fp32: 5e-3 N m/kg, fp16: 3e-2). It writes `moment.onnx`, `moment.engine` and `moment.json` (the
 input contract: channel order, units, 249 samples at 200 Hz, left-leg mirroring, 50 ms output delay) into the run
 folder. Tested with a randomly initialized stand-in (not a trained model): fp32 engine error 1e-7 N m/kg, 1.85 ms per
-two-leg call (p99 2.1 ms) against 5.9 ms for PyTorch; fp16 is no faster for a network this small, so fp32 is the default.
+two-leg call (p99 2.1 ms) against 5.9 ms for PyTorch. fp32 is the default; on real streams fp16 is 7% faster at equal
+accuracy (D04), so either works.
 
 `send_moment.sh` then runs the **real-data check**: `export_check_windows.py` samples 2048 validation windows (all 26
 tasks; test participants untouched) with the training run's saved predictions, and `check_moment_real.py` runs the engine
@@ -139,7 +143,9 @@ regime = aw.get_regime(aw.get_uncertainty(p), bundle.cutoffs)                  #
 - the window-building code for live data: the training arrays come from `ml/nature/awareness/ae_data.py` and
   `ml/nature/estimator/moment_data.py`, which read the Nature Parquet caches. The device needs a streaming version
   that produces the same channels, order and units from a ring buffer;
-- the torque ramp (step 5), per-wearer calibration (step 7) and switching logic (step 8).
+- the torque ramp (step 5), per-wearer calibration (step 7) and switching logic (step 8);
+- a TensorRT engine of the trained TCN-VAE encoder (D05), and the two-loop runtime that schedules B1 and the awareness
+  layer (step 11).
 
 ## Deployment plan
 
@@ -149,11 +155,14 @@ them, then saved (item 6).
 | # | Step | Status | Source |
 |---|---|---|---|
 | 1 | Fit the regime classifier on the training participants | **Done.** Train fit + *u* cutoffs on validation: macro F1 0.875 ± 0.006, 0% dangerous on the spline, 2.7% of safe windows switched off, unseen dangerous tasks 41% switched off. Encoder features only mildly in-sample, so no cross-fitting | E39 |
-| 2 | Build the OOD-safe fallback estimator on the project's sensors | **Done, with one addition open.** B1 reaches Phase 3 hip R² 0.70 and keeps it when the IMU moves by up to 15° and 10 cm. Open: add a random hip-encoder zero offset (up to about 15° between sessions, E40) to B1's training randomization | E40, E41 |
+| 2 | Build the OOD-safe fallback estimator on the project's sensors | **Done on Nature data; not yet good enough on this lab's exo.** B1 reaches Phase 3 hip R² 0.70 (E41) and beats the Nature Estimator (D02), but on Sci-Rob exo data it reaches 0.70 against the Sci Robotics Estimator's 0.84 (D03). See step 10. Also open: a random hip-encoder zero offset (up to about 15° between sessions, E40) in B1's training randomization | E40, E41, D02, D03 |
 | 3 | Re-derive the OOD-safe / OOD-dangerous labels from B1's per-task error (E27 rule) | **Open, now unblocked.** The current labels follow the JME paper's full-sensor estimator (E18). Thigh-only sensing fails on foot-loaded unfamiliar tasks (stair ascent, squats, lunges, step-ups, ball toss), so squats and lunges may move to dangerous. Decide step-ups here too: unseen, they are switched off only 3% of the time (E39). A label change means retraining the TCN-VAE on the new ID + OOD-safe set and refitting the classifier | E27, E39, E41 |
-| 4 | Test a classifier without LOF | **Open; a quick refit** on E39's saved features. LOF needs an on-device 20-nearest-neighbour search and adds little (0.013 ± 0.023 F1) | E38, E39 |
+| 4 | Test a classifier without LOF | **Open; a quick refit** on E39's saved features. LOF needs an on-device 20-nearest-neighbour search (most of novelty scoring's 5.6 ms per window, D04) and adds little (0.013 ± 0.023 F1) | E38, E39, D04 |
 | 5 | Fit the torque ramp to B1's measured error against p<sub>dangerous</sub> | **Open, now unblocked.** `JME_FLOOR` and the linear ramp are placeholders | E35 |
-| 6 | Save a deployable bundle | **Done for the 14-person fit.** `deployment/export_awareness.py` saves the classifier, novelty fits and cutoffs per seed with seed, git SHA and data version, and checks they reproduce the test scores; `deployment/bundle.sh` adds B1 and the encoders. Still to decide: refit on all 22 with the cutoffs frozen. Steps 3 and 4 change the fit, so rerun the export after them | E39 |
+| 6 | Save a deployable bundle | **Done for the 14-person fit** (plain arrays, no scikit-learn on the device, D01). `deployment/export_awareness.py` saves the classifier, novelty fits and cutoffs per seed with seed, git SHA and data version, and checks they reproduce the test scores; `deployment/bundle.sh` adds B1 and the encoders. Still to decide: refit on all 22 with the cutoffs frozen. Steps 3 and 4 change the fit, so rerun the export after them | E39 |
 | 7 | Per-wearer calibration at donning | **Open.** One short bout: about 5 s standing, then a few strides of normal walking. It gives the IMU orientation (E41) and the per-wearer alarm threshold, since false-alarm rates differ by about 2× between people (E25). The classifier's F1 spread across test wearers (0.85–0.87) did not shrink with more people (E39) | E25, E39, E41 |
 | 8 | Switching logic | **Open.** Dwell time and hysteresis between regimes, the false-alarm target (a controller decision), and a per-movement view of the decisions | E25, E30, E34 |
-| 9 | Validation gaps | **Open.** Stair-descent leave-one-task-out holdout; genuinely non-cyclic OOD data; real data from this project's exoskeleton (E41's moved-fit test simulates mounting error, not a different device) | E12, E41 |
+| 9 | Validation gaps | **Partly closed.** Real exo data: B1 replayed on the Jetson over 20 Sci-Rob participants of this lab's exo design (D03). Still open: stair-descent leave-one-task-out holdout; genuinely non-cyclic OOD data; data recorded on this project's own exo | E12, E41, D03 |
+| 10 | Close B1's cross-device gap | **Open; a decision.** Fine-tune or retrain B1 on the lab's exo data (with scale and encoder-offset randomization and the 25–50 ms timing offset), or adopt the Lab Model after rebuilding its engine and replaying it through D03's pipeline. First, the cheap checks on the dev participants: output filter, timing offset | D03 |
+| 11 | Real-time runtime on the Jetson | **Open; design settled.** Two loops: B1 every 10 ms tick (2.2–2.4 ms), awareness every 50 ms in its own thread (about 11.7 ms with a TensorRT TCN-VAE encoder). No file writes in the control loop; hold the last command on a late tick; try `chrt` priority and an isolated core (needs sudo). Fix the CAN sample point first | D04, D05 |
+| 12 | Live input pipeline | **Open.** Streaming conversion of the exo's CAN data to B1's input contract (`moment.json`) and the awareness inputs, per-wearer calibration at donning (step 7), live rhythm features. `deployment/scirob_replay.py` is the offline version for Sci-Rob data | D02, D03 |

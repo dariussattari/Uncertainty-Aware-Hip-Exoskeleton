@@ -114,8 +114,8 @@ against inverse dynamics 0.7067 vs 0.7066. Step median 2.21 vs 2.37 ms (engine a
   Either engine precision works; fp16 is 7% faster at no measured accuracy cost.
 - **Design the controller as two loops.** B1 every 10 ms tick; the awareness layer (20 ms) on its own 50 ms cadence in a
   separate thread or process, feeding the latest regime to the fast loop. Running it inside the tick would miss every
-  deadline. Converting the two encoders to TensorRT, as B1 was (PyTorch 5.9 → engine 2.0 ms), is the obvious next
-  saving; the TCN-VAE encoder is the largest item. Dropping LOF (plan step 4) saves 5.6 ms more.
+  deadline. Converting the encoders to TensorRT was tested in D05: the TCN-VAE encoder drops to 2.1 ms, the LSTM-VAE
+  encoder gets slower, so the layer comes to about 11.7 ms. Dropping LOF (plan step 4) saves 5.6 ms more.
 - **Never write files inside the control loop.** The harness's own SD-card writes caused 96% of the missed ticks and
   grew with file size. The deployed loop's per-row CSV logging (`online_deployed/data_logger.py`, flushed every row) is
   the same pattern: log from a separate thread or buffer, and measure it.
@@ -123,3 +123,13 @@ against inverse dynamics 0.7067 vs 0.7066. Step median 2.21 vs 2.37 ms (engine a
   `chrt` real-time priority and an isolated core; the controller should also tolerate an occasional late tick (hold the
   last command) rather than assume none.
 - `soak_test.py` should checkpoint from a background thread before it is reused.
+
+## Next steps
+
+- Build the controller as two loops (B1 at 100 Hz; awareness at 20 Hz in its own thread or process), with the TCN-VAE
+  encoder as a TensorRT engine and the LSTM-VAE encoder in PyTorch (D05).
+- Move all logging out of the control loop (buffer + background writer), including the lab pipeline's per-row CSV
+  logger, and re-measure.
+- With sudo: test `chrt` real-time priority and an isolated core against the residual jitter; make the loop hold the
+  last command on a late tick.
+- Fix `soak_test.py` to checkpoint from a background thread before reusing it.

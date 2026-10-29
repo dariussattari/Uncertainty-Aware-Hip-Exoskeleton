@@ -65,8 +65,16 @@ mostly tasks B1 never saw in training and where the foot carries the load (E41).
 
 ## Conclusion
 
-- B1 on the Jetson is a fp32 TensorRT engine with standardization inside, two legs per call, about 2 ms. fp16 gains
-  nothing at this size.
+- B1 on the Jetson is a fp32 TensorRT engine with standardization inside, two legs per call, about 2 ms. On synthetic
+  windows fp16 gained nothing; on real streams D04 measured it 7% faster at equal accuracy, so either precision works.
 - `send_moment.sh` now always ends with the real-data check, so any engine that reaches the device has been shown to
   reproduce its training run.
+- **On the Nature data B1 beats the Nature Estimator** (pooled R² 0.81 vs 0.72 on the Phase 3 test participants, 20 of
+  26 tasks); it loses on foot-loaded tasks it never trained on (squats, lunges, step-ups, ball toss).
 - Not tested: live inputs. The engine expects Nature conventions (D03 tests a converter from this lab's exo data).
+
+## Next steps
+
+- Feed the engine live inputs: a streaming converter from the exo's CAN data to the Nature conventions in `moment.json`
+  (D03's `scirob_replay.py` is the offline version of it), with the per-wearer IMU calibration.
+- Re-send with `send_moment.sh` whenever B1 changes; it rebuilds the engine on the device and reruns both checks.

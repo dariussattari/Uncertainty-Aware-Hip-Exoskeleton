@@ -145,12 +145,25 @@ with the dev-derived sign and the fixed lag-10 rule. 2,666,586 leg-samples where
 
 - **The engine path is verified end to end on the device:** a converter from this lab's exo data, streaming at the
   deployed cadence, reproduces the reference within 1.6e-3 N·m/kg at 2.4 ms per tick.
-- **Use the calibrated variant** (the E41 design) for the final participants and the device. The bare axis map loses
+- **Use the calibrated variant** (the E41 design) on the device. The bare axis map loses
   0.06 R² on a rolled IMU.
-- **Cross-device accuracy is the gap, not the engine.** On this exo B1 trails the device's own estimator by 0.13 R²,
-  most on stairs. Candidate causes, testable next: the moment-timing offset (about 0.02 r), stair loading the thigh
+- **Cross-device accuracy is the gap, not the engine.** On this exo B1 trails the Sci Robotics Estimator by 0.13–0.15
+  R², most on stairs. Candidate causes, testable next: the moment-timing offset (about 0.02 r), stair loading the thigh
   cannot see (E41's unseen-task finding), and the accelerometer scale errors on AB28 and AB29.
-- **For the real-time loop:** run with real-time priority or isolate the core; 3 in 800,000 steps missed a tick here.
-- **Held out, the result stands:** on 16 new people B1 reaches R² 0.70 on this exo against the device's own estimator's
+- **For the real-time loop:** 3 in 800,000 steps missed a tick here; D04 traced and characterized this (Python GC and
+  core pinning are not the cause).
+- **Held out, the result stands:** on 16 new people B1 reaches R² 0.70 on this exo against the Sci Robotics Estimator's
   0.84; the gap is largest on stairs and standing. These 16 have now been used once; later B1 variants need new held-out
   data (or the dev participants, already spent on decisions, for development).
+
+## Next steps
+
+- **Close the cross-device gap** (a decision for the thesis):
+  - fine-tune or retrain B1 on this lab's exo data (the 34 Sci-Rob participants, with participants held out as here); or
+  - use the Lab Model (`HipExoGPUCode`, offline R² about 0.81 per its validation) as the OOD-safe estimator, after
+    rebuilding its engine on this Jetson and replaying it through this same pipeline for a like-for-like comparison.
+- **Cheap checks on the dev participants first** (post-processing, no retraining): an output low-pass filter (B1's output is
+  visibly noisier than the Sci Robotics Estimator's), and how much of the gap the 25–50 ms timing offset explains.
+- **Training-time fixes for a B1 retrain:** accelerometer scale randomization (AB28 and AB29 read 8.9 and 10.5 m/s²),
+  hip-encoder zero offset (E40), and the dataset timing offset.
+- The 16 final participants are spent; any new B1 variant needs new held-out data.

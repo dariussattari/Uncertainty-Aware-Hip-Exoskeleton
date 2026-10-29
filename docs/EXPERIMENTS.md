@@ -90,7 +90,7 @@ controller, and can we still operate" (E14).
 | [E40](experiments/E40_nature_moment_estimator_reproduction.md) | Oct 24 | The paper's joint moment estimator, retrained as published (Model A) | Test (Phase 3) hip R² 0.745 ± 0.006, knee 0.771; beats the deployed estimator at the hip (0.596). Unseen tasks no worse than trained. BT07 hip bias |
 | [E41](experiments/E41_nature_moment_estimator_deployment_sensors.md) | Oct 24 | The estimator on hip encoder + thigh IMU (B0), trained across IMU fits (B1) | B0 matches A on trained tasks, loses 0.16 R² on unseen ones (stair ascent 0.08). Moving the IMU costs B0 0.075, B1 0.013. **B1 is the deployment candidate** (Phase 3 hip R² 0.70) |
 
-## Where things stand (as of 2026-10-25)
+## Where things stand (as of 2026-10-29)
 
 - **Unfamiliar-movement alarm:** LSTM-VAE (β 1, fixed variance) on 3 s raw windows, LOF or Mahalanobis on its latent
   (E31).
@@ -98,12 +98,18 @@ controller, and can we still operate" (E14).
   + rhythm), the LSTM-VAE novelty scores and the rhythm features, collapsed to *u* with two cutoffs (E34, E35). It is
   now fitted on the 14 training participants with the cutoffs set on the validation participants (E39: F1 0.875).
 - **OOD-safe fallback estimator:** B1, the paper's TCN on hip encoder + thigh IMU, trained across IMU rotation and
-  lever-arm perturbations (E41: Phase 3 hip R² 0.70, robust to a moved IMU).
+  lever-arm perturbations (E41: Phase 3 hip R² 0.70, robust to a moved IMU). On the Jetson it is the trained model at
+  about 2 ms per call and beats the Nature Estimator (D02), but on this lab's exo data (Sci-Rob) it trails the Sci
+  Robotics Estimator, R² 0.70 vs 0.84 on 16 held-out people (D03).
 - **Sensor health:** reconstruction error and disagreement for faults (E15), plus matched Kalman residuals for timing
   faults (E04).
+- **Deployment** ([`deployment/docs/EXPERIMENTS.md`](../deployment/docs/EXPERIMENTS.md), D01–D05): the awareness layer
+  runs on the Jetson without scikit-learn and reproduces E39 exactly; the device is stable over 12 h at 100 Hz; the
+  controller must run as two loops (B1 every 10 ms, awareness every 50 ms at about 12–20 ms per window).
 
 **Open threads** (ordered as a deployment plan in [`deployability_status.md`](../deployment/deployability_status.md)):
 
+- Close B1's cross-device gap on this lab's exo: fine-tune or retrain on its data, or adopt the Lab Model (D03).
 - Apply the E27 labelling rule to B1, the project's own hip-and-thigh estimator (E41).
 - Fit the torque ramp to the estimator's measured error.
 - Test a classifier without LOF.
@@ -111,3 +117,4 @@ controller, and can we still operate" (E14).
 - Add a hip-encoder zero offset to B1's randomization (E40).
 - Hip-angle forecaster training on Nature.
 - Genuinely non-cyclic OOD data.
+- Device side (deployment next steps): live input pipeline, two-loop runtime, TensorRT TCN-VAE encoder, CAN sample point.

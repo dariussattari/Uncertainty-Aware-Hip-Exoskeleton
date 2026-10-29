@@ -41,3 +41,9 @@ them the way it shortened B1 (about 3×), most usefully the TCN-VAE encoder, the
 - That is still more than half a 10 ms tick next to B1's 2–2.4 ms, so the two-loop design from D04 stands: B1 every
   tick, awareness on its own 50 ms cadence.
 - Real engines need the trained encoders on the device; this used stand-ins and checked only conversion and speed.
+
+## Next steps
+
+- Convert the trained TCN-VAE encoder (`tcn_vae_raw_3s_spectral_b128_fixed_s*`) to an engine on the Jetson with a
+  real-data check, as `moment_engine.py` / `check_moment_real.py` do for B1.
+- Time the whole awareness layer with the real encoders in its own loop, alongside B1.
